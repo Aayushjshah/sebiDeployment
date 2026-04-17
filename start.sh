@@ -315,7 +315,7 @@ process_prometheus_config() {
   if [ -f prometheus-selfhosted.yml.template ]; then
     load_env_file
     local metrics_port="${METRICS_PORT:-3001}"
-    sed "s|\\$METRICS_PORT|${metrics_port}|g" prometheus-selfhosted.yml.template > prometheus-selfhosted.yml
+    sed "s|[$]METRICS_PORT|${metrics_port}|g" prometheus-selfhosted.yml.template > prometheus-selfhosted.yml
   fi
 }
 
