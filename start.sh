@@ -52,6 +52,11 @@ get_docker_compose_cmd() {
   fi
 }
 
+check_bundle_layout() {
+  [ -d "${BUNDLE_DIR}/images" ] || die "Expected Docker image tarballs under ${BUNDLE_DIR}/images"
+  [ -d "${BUNDLE_DIR}/grafana/provisioning" ] || die "Expected Grafana provisioning files under ${BUNDLE_DIR}/grafana/provisioning"
+}
+
 detect_public_url() {
   if [ -n "${XYNE_PUBLIC_URL:-}" ]; then
     printf "%s" "${XYNE_PUBLIC_URL%/}"
@@ -278,17 +283,19 @@ load_images() {
 setup_dirs() {
   load_env_file
   local data_dir="${XYNE_DATA_DIR:-./data}"
+  local data_dir_abs
 
   log "Creating data directories under ${data_dir}..."
   mkdir -p "${data_dir}"/{postgres-data,vespa-data,app-uploads,app-logs,app-assets,app-migrations,app-downloads,grafana-storage,loki-data,promtail-data,prometheus-data,vespa-models}
   mkdir -p "${data_dir}/vespa-data/tmp"
+  data_dir_abs="$(cd "${data_dir}" && pwd -P)"
 
-  chmod -f 755 "${data_dir}" 2>/dev/null || true
-  chmod -f 755 "${data_dir}"/* 2>/dev/null || true
+  chmod -f 755 "${data_dir_abs}" 2>/dev/null || true
+  chmod -f 755 "${data_dir_abs}"/* 2>/dev/null || true
 
   if command -v getenforce >/dev/null 2>&1 && [ "$(getenforce 2>/dev/null || true)" = "Enforcing" ] && command -v chcon >/dev/null 2>&1; then
-    warn "SELinux is enforcing; applying container file labels to ${data_dir}"
-    chcon -Rt svirt_sandbox_file_t "${data_dir}" 2>/dev/null || warn "Could not apply SELinux labels; bind mounts may need manual labeling"
+    warn "SELinux is enforcing; applying container file labels to ${data_dir_abs}"
+    chcon -Rt svirt_sandbox_file_t "${data_dir_abs}" 2>/dev/null || warn "Could not apply SELinux labels; bind mounts may need manual labeling"
   fi
 
   docker network create xyne >/dev/null 2>&1 || true
@@ -297,18 +304,20 @@ setup_dirs() {
 setup_permissions() {
   load_env_file
   local data_dir="${XYNE_DATA_DIR:-./data}"
+  local data_dir_abs
   local uid="${DOCKER_UID:-1000}"
   local gid="${DOCKER_GID:-1000}"
+  data_dir_abs="$(cd "${data_dir}" && pwd -P)"
 
   log "Setting directory ownership with busybox..."
   local dir
   for dir in postgres-data vespa-data vespa-models app-uploads app-logs app-assets app-migrations app-downloads grafana-storage; do
-    docker run --rm -v "$(pwd)/${data_dir}/${dir}:/data" busybox:latest chown -R "${uid}:${gid}" /data 2>/dev/null || true
+    docker run --rm -v "${data_dir_abs}/${dir}:/data" busybox:latest chown -R "${uid}:${gid}" /data 2>/dev/null || true
   done
 
-  docker run --rm -v "$(pwd)/${data_dir}/prometheus-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 65534:65534 /data' 2>/dev/null || true
-  docker run --rm -v "$(pwd)/${data_dir}/loki-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
-  docker run --rm -v "$(pwd)/${data_dir}/promtail-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
+  docker run --rm -v "${data_dir_abs}/prometheus-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 65534:65534 /data' 2>/dev/null || true
+  docker run --rm -v "${data_dir_abs}/loki-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
+  docker run --rm -v "${data_dir_abs}/promtail-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
 }
 
 process_prometheus_config() {
@@ -342,13 +351,12 @@ ensure_keycloak_database() {
 
 wait_for_keycloak() {
   load_env_file
-  require_command curl
 
   local endpoint="http://localhost:${KEYCLOAK_PORT:-8082}/keycloak/realms/master"
   log "Waiting for Keycloak at ${endpoint}..."
 
   local attempts=0
-  until curl -fsS "${endpoint}" >/dev/null 2>&1; do
+  until http_get_ok "${endpoint}"; do
     attempts=$((attempts + 1))
     if [ "${attempts}" -ge 90 ]; then
       die "Keycloak did not become ready"
@@ -357,12 +365,43 @@ wait_for_keycloak() {
   done
 }
 
+http_get_ok() {
+  local url="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS "${url}" >/dev/null 2>&1
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O /dev/null "${url}" >/dev/null 2>&1
+  else
+    docker run --rm --network host busybox:latest wget -q -O /dev/null "${url}" >/dev/null 2>&1
+  fi
+}
+
 open_firewall_port() {
   if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
     log "Opening port 3000 in firewalld..."
     firewall-cmd --permanent --add-port=3000/tcp >/dev/null || true
     firewall-cmd --reload >/dev/null || true
   fi
+}
+
+cleanup_conflicting_containers() {
+  log "Removing old Xyne containers with fixed names..."
+  local name
+  for name in \
+    xyne-db \
+    xyne-app \
+    xyne-app-sync \
+    xyne-keycloak \
+    xyne-nginx \
+    xyne-prometheus \
+    xyne-grafana \
+    vespa \
+    vespa-deploy \
+    livekit \
+    loki \
+    promtail; do
+    docker rm -f "${name}" >/dev/null 2>&1 || true
+  done
 }
 
 start_services() {
@@ -406,6 +445,7 @@ main() {
 
   require_command docker
   docker info >/dev/null 2>&1 || die "Docker daemon is not running"
+  check_bundle_layout
   local dc
   dc="$(get_docker_compose_cmd)"
 
@@ -415,6 +455,7 @@ main() {
   setup_permissions
   process_prometheus_config
   open_firewall_port
+  cleanup_conflicting_containers
   start_services "${dc}"
   print_summary
 }
