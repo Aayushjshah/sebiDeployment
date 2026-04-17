@@ -320,6 +320,26 @@ setup_permissions() {
   docker run --rm -v "${data_dir_abs}/promtail-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
 }
 
+ensure_migrations() {
+  local dc="$1"
+  load_env_file
+  local data_dir="${XYNE_DATA_DIR:-./data}"
+  local data_dir_abs
+
+  mkdir -p "${data_dir}"
+  data_dir_abs="$(cd "${data_dir}" && pwd -P)"
+  mkdir -p "${data_dir_abs}/app-migrations"
+
+  if [ -f "${data_dir_abs}/app-migrations/meta/_journal.json" ]; then
+    info "Database migrations already exist in ${data_dir}/app-migrations"
+    return
+  fi
+
+  log "Generating database migrations from the Xyne image..."
+  ${dc} "${COMPOSE_FILES[@]}" --profile keycloak run --rm --no-deps --pull never app bun run generate
+  [ -f "${data_dir_abs}/app-migrations/meta/_journal.json" ] || die "Could not prepare Drizzle migrations"
+}
+
 process_prometheus_config() {
   if [ -f prometheus-selfhosted.yml.template ]; then
     load_env_file
@@ -456,6 +476,7 @@ main() {
   process_prometheus_config
   open_firewall_port
   cleanup_conflicting_containers
+  ensure_migrations "${dc}"
   start_services "${dc}"
   print_summary
 }
