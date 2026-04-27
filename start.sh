@@ -141,6 +141,13 @@ set_env_if_missing() {
   fi
 }
 
+require_env_file_value() {
+  local key="$1"
+  if env_value_is_empty "${key}"; then
+    die "${key} must be set in .env"
+  fi
+}
+
 load_env_file() {
   if [ -f .env ]; then
     set -a
@@ -219,6 +226,11 @@ configure_env() {
   set_env_value "GOOGLE_REDIRECT_URI" "${public_url}/v1/auth/callback"
   set_env_value "GOOGLE_PROD_REDIRECT_URI" "${public_url}/v1/auth/callback"
 
+  require_env_file_value "LITELLM_MODEL_CONFIG_PATH"
+  require_env_file_value "MODELS_LIST"
+  require_env_file_value "LITELLM_BEST_AGENTIC_MODEL"
+  require_env_file_value "LITELLM_FAST_MODEL"
+
   set_env_value "LIVEKIT_API_KEY" "${LIVEKIT_API_KEY:-devkey}"
   set_env_value "LIVEKIT_API_SECRET" "${LIVEKIT_API_SECRET:-devsecret}"
   set_env_value "LIVEKIT_URL" "ws://${public_host}:3000/rtc"
@@ -241,6 +253,14 @@ configure_env() {
   fi
 
   log ".env ready for ${public_url}"
+}
+
+validate_litellm_model_catalog() {
+  load_env_file
+
+  if [ "${LITELLM_MODEL_CONFIG_PATH:-}" = "/usr/src/app/server/config/litellm-models.json" ] && [ ! -f "./config/litellm-models.json" ]; then
+    die "LITELLM_MODEL_CONFIG_PATH is set, but ./config/litellm-models.json is missing"
+  fi
 }
 
 load_images() {
@@ -286,6 +306,7 @@ setup_dirs() {
   local data_dir_abs
 
   log "Creating data directories under ${data_dir}..."
+  mkdir -p config
   mkdir -p "${data_dir}"/{postgres-data,vespa-data,app-uploads,app-logs,app-assets,app-migrations,app-downloads,grafana-storage,loki-data,promtail-data,prometheus-data,vespa-models}
   mkdir -p "${data_dir}/vespa-data/tmp"
   data_dir_abs="$(cd "${data_dir}" && pwd -P)"
@@ -471,6 +492,7 @@ main() {
 
   load_images
   configure_env
+  validate_litellm_model_catalog
   setup_dirs
   setup_permissions
   process_prometheus_config
