@@ -22,6 +22,10 @@ die() { echo -e "${RED}[error]${NC} $*" >&2; exit 1; }
 
 COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.infrastructure-cpu.yml -f docker-compose.app.yml -f docker-compose.sync.yml)
 INFRA_FILES=(-f docker-compose.yml -f docker-compose.infrastructure-cpu.yml)
+XYNE_APP_IMAGE="xynehq/xyne:latest"
+XYNE_APP_BASE_IMAGE="xynehq/xyne:airgap-base"
+XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"
+XYNE_SEBI_CA_CERT="certs/socnoc.crt"
 
 REQUIRED_IMAGES=(
   "busybox:latest"
@@ -299,6 +303,23 @@ load_images() {
   log "All required images are available locally"
 }
 
+prepare_sebi_ca_image() {
+  log "Preparing SEBI CA-enabled Xyne image..."
+
+  [ -f "${XYNE_SEBI_CA_DOCKERFILE}" ] || die "Expected ${XYNE_SEBI_CA_DOCKERFILE} under ${SCRIPT_DIR}"
+  [ -f "${XYNE_SEBI_CA_CERT}" ] || die "Expected SOCNOC CA certificate at ${SCRIPT_DIR}/${XYNE_SEBI_CA_CERT}; copy socnoc.crt there before starting"
+
+  docker image inspect "${XYNE_APP_IMAGE}" >/dev/null 2>&1 || die "Base image ${XYNE_APP_IMAGE} is not available"
+
+  docker tag "${XYNE_APP_IMAGE}" "${XYNE_APP_BASE_IMAGE}"
+  docker build --pull=false --network=none \
+    -f "${XYNE_SEBI_CA_DOCKERFILE}" \
+    -t "${XYNE_APP_IMAGE}" \
+    .
+
+  log "SEBI CA-enabled image is ready as ${XYNE_APP_IMAGE}"
+}
+
 setup_dirs() {
   load_env_file
   local data_dir="${XYNE_DATA_DIR:-./data}"
@@ -490,6 +511,7 @@ main() {
   dc="$(get_docker_compose_cmd)"
 
   load_images
+  prepare_sebi_ca_image
   configure_env
   validate_litellm_model_catalog
   setup_dirs

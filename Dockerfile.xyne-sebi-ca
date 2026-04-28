@@ -1,0 +1,14 @@
+FROM xynehq/xyne:airgap-base
+
+USER root
+
+COPY certs/socnoc.crt /usr/local/share/ca-certificates/socnoc.crt
+
+RUN chmod 0644 /usr/local/share/ca-certificates/socnoc.crt \
+    && update-ca-certificates \
+    && sed -i 's|exec bun server.ts|exec bun --use-system-ca server.ts|' /usr/src/app/start.sh \
+    && grep -q 'exec bun --use-system-ca server.ts' /usr/src/app/start.sh
+
+ENV BUN_OPTIONS=--use-system-ca
+
+USER bun
