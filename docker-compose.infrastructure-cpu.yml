@@ -61,6 +61,8 @@ services:
       - "${VESPA_QUERY_PORT:-8081}:8081"
       - "19071:19071"
     volumes:
+      - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/pki/tls/certs/ca-bundle.crt:ro
+      - /root/Documents/sebiDeployment/vespa/app:/app
       - ${XYNE_DATA_DIR:-./data}/vespa-data:/opt/vespa/var
     networks:
       - xyne
@@ -88,6 +90,11 @@ services:
       - VESPA_LOGS_JVMARGS=-Xms128m -Xmx256m -XX:+UseG1GC
       - VESPA_CLUSTER_CONTROLLER_JVMARGS=-Xms128m -Xmx256m -XX:+UseG1GC
       - VESPA_METRICS_JVMARGS=-Xms256m -Xmx512m -XX:+UseG1GC
+      - NO_PROXY=localhost,127.0.0.1
+      - _JAVA_OPTIONS=-Dhttps.proxyHost=10.201.6.100 -Dhttps.proxyPort=1080 -Dhttp.proxyHost=10.201.6.100 -Dhttp.proxyPort=1080 -Dhttps.nonProxyHosts=localhost|127.0.0.1
+      - http_proxy=${http_proxy:-}
+      - https_proxy=${https_proxy:-}
+      - VESPA_SECRET_CDAC_API_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkVWlJbWJpVWg2bjZmNWdnT3FBRkZJbWhFb0s4OEt0dCJ9.p7Fru4__GseBfgpzaPAeFaZWUmMsC7is3kD59hjMWT8
 
   vespa-deploy:
     image: vespa-deploy:latest
