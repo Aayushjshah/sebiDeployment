@@ -33,8 +33,7 @@ REQUIRED_IMAGES=(
   "postgres:15-alpine"
   "prom/prometheus:latest"
   "quay.io/keycloak/keycloak:26.0"
-  "vespa-deploy:latest"
-  "vespaengine/vespa:latest"
+  "xyne-vespa-gpu-embedder-sep:tag"
   "xynehq/xyne:latest"
 )
 
