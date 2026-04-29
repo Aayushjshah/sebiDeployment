@@ -1,0 +1,4 @@
+*
+!Dockerfile.xyne-sebi-ca
+!certs/
+!certs/socnoc.crt
