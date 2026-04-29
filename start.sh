@@ -188,7 +188,7 @@ configure_env() {
   set_env_value "VESPA_REQUIRED" "false"
   set_env_value "DOCKER_UID" "${DOCKER_UID:-1000}"
   set_env_value "DOCKER_GID" "${DOCKER_GID:-1000}"
-  set_env_value "XYNE_DATA_DIR" "${XYNE_DATA_DIR:-../data}"
+  set_env_value "XYNE_DATA_DIR" "${XYNE_DATA_DIR:-/data}"
   set_env_value "HOST" "${public_url}"
   set_env_value "NGINX_DOMAIN" "${public_host}"
   set_env_value "PORT" "3000"
@@ -515,10 +515,10 @@ main() {
   configure_env
   validate_litellm_model_catalog
   setup_dirs
-  setup_permissions
   process_prometheus_config
   open_firewall_port
   cleanup_conflicting_containers
+  setup_permissions
   ensure_migrations "${dc}"
   start_services "${dc}"
   print_summary
