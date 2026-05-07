@@ -1,0 +1,108 @@
+<services version="1.0">
+
+
+
+
+  <container id="search" version="1.0">
+      <http>
+          <server id="search-http" port="8081" />
+      </http>
+
+
+
+
+      <search />
+
+
+
+
+      <component id="embedder" type="openai-embedder">
+          <model>intfloat/multilingual-e5-large-instruct</model>
+          <dimensions>1024</dimensions>
+          <endpoint>https://apis.airawat.cdac.in/msebisec/v1/embeddings</endpoint>
+          <api-key-secret-ref>cdac_api_key</api-key-secret-ref>
+      </component>
+
+
+
+
+      <nodes>
+          <jvm allocated-memory="20%" />
+          <node hostalias="node1" />
+      </nodes>
+  </container>
+
+
+
+
+  <container id="feed" version="1.0">
+      <http>
+          <server id="feed-http" port="8080" />
+      </http>
+
+
+
+
+      <document-api />
+
+
+
+
+      <component id="embedder" type="openai-embedder">
+          <model>intfloat/multilingual-e5-large-instruct</model>
+          <dimensions>1024</dimensions>
+          <endpoint>https://apis.airawat.cdac.in/msebisec/v1/embeddings</endpoint>
+          <api-key-secret-ref>cdac_api_key</api-key-secret-ref>
+      </component>
+
+
+
+
+      <nodes>
+          <jvm allocated-memory="30%" />
+          <node hostalias="node1" />
+      </nodes>
+  </container>
+
+
+
+
+  <content id="content" version="1.0">
+      <redundancy>1</redundancy>
+
+
+
+
+      <documents>
+          <document type="chat_container" mode="index" global="true" />
+          <document type="chat_team" mode="index" global="true" />
+          <document type="datasource" mode="index" global="true" />
+          <document type="doc" mode="index" />
+          <document type="user" mode="index" />
+          <document type="user_query" mode="index" />
+          <document type="chat_message" mode="index" />
+          <document type="chat_attachment" mode="index" />
+          <document type="chat_user" mode="index" />
+          <document type="chat_memory" mode="index" />
+          <document type="episodic_memory" mode="index" />
+          <document type="kb_items" mode="index" />
+          <document type="datasource_file" mode="index" />
+          <document type="file" mode="index" />
+          <document type="mail" mode="index" />
+          <document type="mail_attachment" mode="index" />
+          <document type="event" mode="index" />
+          <document type="ticket" mode="index" />
+      </documents>
+
+
+
+
+      <nodes>
+          <node distribution-key="0" hostalias="node1" />
+      </nodes>
+  </content>
+
+
+
+
+</services>
