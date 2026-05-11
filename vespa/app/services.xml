@@ -26,6 +26,13 @@
 
 
 
+      <config name="container.handler.threadpool">
+          <maxthreads>8</maxthreads>
+      </config>
+
+
+
+
       <nodes>
           <jvm allocated-memory="20%" />
           <node hostalias="node1" />
@@ -54,6 +61,23 @@
           <endpoint>http://tei-batch-proxy:8080/v1/embeddings</endpoint>
           <api-key-secret-ref>cdac_api_key</api-key-secret-ref>
       </component>
+
+
+
+
+      <config name="container.handler.threadpool">
+          <maxthreads>8</maxthreads>
+      </config>
+
+
+
+
+      <config name="com.yahoo.document.restapi.document-operation-executor">
+          <resendDelayMillis>25</resendDelayMillis>
+          <maxThrottled>1024</maxThrottled>
+          <maxThrottledAge>10.0</maxThrottledAge>
+          <maxThrottledBytes>-0.4</maxThrottledBytes>
+      </config>
 
 
 
