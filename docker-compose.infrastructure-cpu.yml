@@ -51,11 +51,47 @@ services:
       - POSTGRES_PASSWORD=xyne
       - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana
 
+  tei-batch-proxy:
+    image: node:20-alpine
+    container_name: sebi-tei-batch-proxy
+    working_dir: /app
+    command: ["node", "/app/tei-batch-proxy.js"]
+    environment:
+      - PORT=8080
+      - UPSTREAM_EMBEDDINGS_URL=https://apis.airawat.cdac.in/msebisec/v1/embeddings
+      - EMBEDDINGS_BATCH_SIZE=512
+      - UPSTREAM_CONCURRENCY=1
+      - REQUEST_TIMEOUT_MS=1800000
+      - MAX_RETRIES=8
+      - RETRY_BASE_MS=1000
+      - PROXY_PAYLOAD_LIMIT_BYTES=200000000
+      - HTTPS_PROXY=${HTTPS_PROXY:-http://10.201.6.100:1080}
+      - HTTP_PROXY=${HTTP_PROXY:-http://10.201.6.100:1080}
+      - https_proxy=${https_proxy:-http://10.201.6.100:1080}
+      - http_proxy=${http_proxy:-http://10.201.6.100:1080}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,vespa,tei-batch-proxy,sebi-tei-batch-proxy,xyne-db,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local}
+      - no_proxy=${no_proxy:-localhost,127.0.0.1,vespa,tei-batch-proxy,sebi-tei-batch-proxy,xyne-db,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local}
+      - NODE_EXTRA_CA_CERTS=/certs/cdac-ca.pem
+    volumes:
+      - ./tei-batch-proxy.js:/app/tei-batch-proxy.js:ro
+      - ./pem/cdac-ca.pem:/certs/cdac-ca.pem:ro
+    networks:
+      - xyne
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+
   vespa:
     image: vespaengine/vespa:latest
     container_name: vespa
     hostname: vespa
     user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    depends_on:
+      tei-batch-proxy:
+        condition: service_started
     ports:
       - "${VESPA_FEED_PORT:-8080}:8080"
       - "${VESPA_QUERY_PORT:-8081}:8081"
@@ -90,8 +126,8 @@ services:
       - VESPA_LOGS_JVMARGS=-Xms128m -Xmx256m -XX:+UseG1GC
       - VESPA_CLUSTER_CONTROLLER_JVMARGS=-Xms128m -Xmx256m -XX:+UseG1GC
       - VESPA_METRICS_JVMARGS=-Xms256m -Xmx512m -XX:+UseG1GC
-      - NO_PROXY=localhost,127.0.0.1
-      - _JAVA_OPTIONS=-Dhttps.proxyHost=10.201.6.100 -Dhttps.proxyPort=1080 -Dhttp.proxyHost=10.201.6.100 -Dhttp.proxyPort=1080 -Dhttps.nonProxyHosts=localhost|127.0.0.1
+      - NO_PROXY=localhost,127.0.0.1,vespa,tei-batch-proxy,sebi-tei-batch-proxy
+      - _JAVA_OPTIONS=-Dhttps.proxyHost=10.201.6.100 -Dhttps.proxyPort=1080 -Dhttp.proxyHost=10.201.6.100 -Dhttp.proxyPort=1080 -Dhttps.nonProxyHosts=localhost|127.0.0.1|vespa|tei-batch-proxy|sebi-tei-batch-proxy -Dhttp.nonProxyHosts=localhost|127.0.0.1|vespa|tei-batch-proxy|sebi-tei-batch-proxy
       - http_proxy=${http_proxy:-}
       - https_proxy=${https_proxy:-}
       - VESPA_SECRET_CDAC_API_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkVWlJbWJpVWg2bjZmNWdnT3FBRkZJbWhFb0s4OEt0dCJ9.p7Fru4__GseBfgpzaPAeFaZWUmMsC7is3kD59hjMWT8

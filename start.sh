@@ -34,6 +34,7 @@ REQUIRED_IMAGES=(
   "grafana/promtail:3.4.1"
   "livekit/livekit-server:v1.9.1"
   "nginx:1.26-alpine"
+  "node:20-alpine"
   "postgres:15-alpine"
   "prom/prometheus:latest"
   "quay.io/keycloak/keycloak:26.0"
@@ -58,6 +59,8 @@ get_docker_compose_cmd() {
 check_bundle_layout() {
   [ -d "${BUNDLE_DIR}/images" ] || die "Expected Docker image tarballs under ${BUNDLE_DIR}/images"
   [ -d "${BUNDLE_DIR}/grafana/provisioning" ] || die "Expected Grafana provisioning files under ${BUNDLE_DIR}/grafana/provisioning"
+  [ -f "${SCRIPT_DIR}/tei-batch-proxy.js" ] || die "Expected TEI batch proxy script at ${SCRIPT_DIR}/tei-batch-proxy.js"
+  [ -f "${SCRIPT_DIR}/pem/cdac-ca.pem" ] || die "Expected CDAC CA certificate at ${SCRIPT_DIR}/pem/cdac-ca.pem"
 }
 
 detect_public_url() {
@@ -173,7 +176,7 @@ configure_env() {
   local public_host
   public_host="$(url_host "${public_url}")"
   local no_proxy_list
-  no_proxy_list="localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local"
+  no_proxy_list="localhost,127.0.0.1,xyne-db,vespa,tei-batch-proxy,sebi-tei-batch-proxy,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local"
 
   set_env_value "NODE_ENV" "production"
   set_env_value "DATABASE_HOST" "xyne-db"
@@ -456,6 +459,7 @@ cleanup_conflicting_containers() {
     xyne-nginx \
     xyne-prometheus \
     xyne-grafana \
+    sebi-tei-batch-proxy \
     vespa \
     vespa-deploy \
     livekit \
