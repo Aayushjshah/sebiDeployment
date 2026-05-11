@@ -19,7 +19,7 @@
       <component id="embedder" type="openai-embedder">
           <model>intfloat/multilingual-e5-large-instruct</model>
           <dimensions>1024</dimensions>
-          <endpoint>https://apis.airawat.cdac.in/msebisec/v1/embeddings</endpoint>
+          <endpoint>http://tei-batch-proxy:8080/v1/embeddings</endpoint>
           <api-key-secret-ref>cdac_api_key</api-key-secret-ref>
       </component>
 
@@ -51,7 +51,7 @@
       <component id="embedder" type="openai-embedder">
           <model>intfloat/multilingual-e5-large-instruct</model>
           <dimensions>1024</dimensions>
-          <endpoint>https://apis.airawat.cdac.in/msebisec/v1/embeddings</endpoint>
+          <endpoint>http://tei-batch-proxy:8080/v1/embeddings</endpoint>
           <api-key-secret-ref>cdac_api_key</api-key-secret-ref>
       </component>
 
