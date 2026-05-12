@@ -72,6 +72,7 @@ services:
       - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,vespa,tei-batch-proxy,sebi-tei-batch-proxy,xyne-db,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local}
       - no_proxy=${no_proxy:-localhost,127.0.0.1,vespa,tei-batch-proxy,sebi-tei-batch-proxy,xyne-db,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local}
       - NODE_EXTRA_CA_CERTS=/certs/cdac-ca.pem
+      - UPSTREAM_CA_CERT_FILE=/certs/cdac-ca.pem
     volumes:
       - ./tei-batch-proxy.js:/app/tei-batch-proxy.js:ro
       - ./pem/cdac-ca.pem:/certs/cdac-ca.pem:ro

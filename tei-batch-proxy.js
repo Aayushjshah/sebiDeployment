@@ -1,5 +1,6 @@
 const http = require("node:http");
 const https = require("node:https");
+const fs = require("node:fs");
 const tls = require("node:tls");
 const { URL } = require("node:url");
 
@@ -11,6 +12,8 @@ const REQUEST_TIMEOUT_MS = intEnv("REQUEST_TIMEOUT_MS", 1800000);
 const MAX_RETRIES = intEnv("MAX_RETRIES", 8);
 const RETRY_BASE_MS = intEnv("RETRY_BASE_MS", 1000);
 const PROXY_PAYLOAD_LIMIT_BYTES = intEnv("PROXY_PAYLOAD_LIMIT_BYTES", 200000000);
+const UPSTREAM_CA_CERT_FILE = process.env.UPSTREAM_CA_CERT_FILE || process.env.NODE_EXTRA_CA_CERTS || "";
+const UPSTREAM_TLS_CA = loadCaCerts(UPSTREAM_CA_CERT_FILE);
 
 const upstreamUrl = new URL(UPSTREAM_EMBEDDINGS_URL);
 
@@ -88,7 +91,7 @@ server.headersTimeout = Math.max(REQUEST_TIMEOUT_MS + 60000, 660000);
 server.requestTimeout = Math.max(REQUEST_TIMEOUT_MS + 60000, 660000);
 server.listen(PORT, () => {
   console.log(
-    `[tei-batch-proxy] listening on :${PORT}; upstream=${redactUrl(upstreamUrl)}; batch_size=${BATCH_SIZE}; concurrency=${UPSTREAM_CONCURRENCY}`,
+    `[tei-batch-proxy] listening on :${PORT}; upstream=${redactUrl(upstreamUrl)}; batch_size=${BATCH_SIZE}; concurrency=${UPSTREAM_CONCURRENCY}; upstream_ca=${UPSTREAM_CA_CERT_FILE || "system"}`,
   );
 });
 
@@ -368,6 +371,7 @@ function requestBuffer(targetUrl, method, headers, bodyBuffer, timeoutMs) {
       method,
       path: `${targetUrl.pathname}${targetUrl.search}`,
       headers,
+      ...tlsRequestOptions(targetUrl),
     },
     bodyBuffer,
     timeoutMs,
@@ -401,6 +405,7 @@ function requestHttpsViaProxy(targetUrl, proxyUrl, method, headers, bodyBuffer, 
       const tlsSocket = tls.connect({
         socket,
         servername: targetUrl.hostname,
+        ...tlsRequestOptions(targetUrl),
       });
 
       tlsSocket.once("secureConnect", () => {
@@ -503,6 +508,22 @@ function addProxyAuthorization(headers, proxyUrl) {
   }
 }
 
+function tlsRequestOptions(targetUrl) {
+  if (targetUrl.protocol !== "https:") {
+    return {};
+  }
+
+  const options = {
+    servername: targetUrl.hostname,
+  };
+
+  if (UPSTREAM_TLS_CA) {
+    options.ca = UPSTREAM_TLS_CA;
+  }
+
+  return options;
+}
+
 function sendJson(res, statusCode, body) {
   const responseBody = JSON.stringify(body);
   res.writeHead(statusCode, {
@@ -534,6 +555,18 @@ function requiredEnv(name) {
     throw new Error(`${name} is required`);
   }
   return value;
+}
+
+function loadCaCerts(filePath) {
+  if (!filePath) {
+    return null;
+  }
+
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (error) {
+    throw new Error(`Could not read upstream CA certificate file ${filePath}: ${error.message}`);
+  }
 }
 
 function httpError(statusCode, upstreamBody, publicMessage) {
