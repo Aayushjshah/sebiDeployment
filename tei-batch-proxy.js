@@ -12,6 +12,7 @@ const REQUEST_TIMEOUT_MS = intEnv("REQUEST_TIMEOUT_MS", 1800000);
 const MAX_RETRIES = intEnv("MAX_RETRIES", 8);
 const RETRY_BASE_MS = intEnv("RETRY_BASE_MS", 1000);
 const PROXY_PAYLOAD_LIMIT_BYTES = intEnv("PROXY_PAYLOAD_LIMIT_BYTES", 200000000);
+const EXPECTED_EMBEDDING_DIMENSIONS = optionalIntEnv("EXPECTED_EMBEDDING_DIMENSIONS");
 const UPSTREAM_CA_CERT_FILE = process.env.UPSTREAM_CA_CERT_FILE || process.env.NODE_EXTRA_CA_CERTS || "";
 const UPSTREAM_TLS_CA = loadCaCerts(UPSTREAM_CA_CERT_FILE);
 
@@ -42,9 +43,16 @@ const server = http.createServer(async (req, res) => {
     const input = requestBody.input;
 
     if (!Array.isArray(input)) {
+      const upstreamStartedAt = Date.now();
       const upstreamResponse = await postJsonWithRetries(requestBody, req.headers);
+      const upstreamDurationMs = Date.now() - upstreamStartedAt;
+      if (upstreamResponse.statusCode >= 200 && upstreamResponse.statusCode < 300) {
+        validateEmbeddingDimensions(upstreamResponse.body, requestBody.model);
+      }
       sendJson(res, upstreamResponse.statusCode, upstreamResponse.body);
-      logRequest(input === undefined ? 0 : 1, 1, startedAt, upstreamResponse.statusCode);
+      logRequest(input === undefined ? 0 : 1, 1, startedAt, upstreamResponse.statusCode, upstreamResponse.body, [
+        upstreamDurationMs,
+      ]);
       return;
     }
 
@@ -54,7 +62,9 @@ const server = http.createServer(async (req, res) => {
       UPSTREAM_CONCURRENCY,
       async (batch) => {
         const batchBody = { ...requestBody, input: batch.input };
+        const upstreamStartedAt = Date.now();
         const upstreamResponse = await postJsonWithRetries(batchBody, req.headers);
+        const upstreamDurationMs = Date.now() - upstreamStartedAt;
 
         if (upstreamResponse.statusCode < 200 || upstreamResponse.statusCode >= 300) {
           throw httpError(
@@ -68,13 +78,22 @@ const server = http.createServer(async (req, res) => {
           start: batch.start,
           inputCount: batch.input.length,
           body: upstreamResponse.body,
+          durationMs: upstreamDurationMs,
         };
       },
     );
 
     const merged = mergeOpenAIEmbeddingResponses(batchResults, requestBody.model);
+    validateEmbeddingDimensions(merged, requestBody.model);
     sendJson(res, 200, merged);
-    logRequest(input.length, batches.length, startedAt, 200);
+    logRequest(
+      input.length,
+      batches.length,
+      startedAt,
+      200,
+      merged,
+      batchResults.map((result) => result.durationMs),
+    );
   } catch (error) {
     const statusCode = error.statusCode || 500;
     sendJson(res, statusCode, {
@@ -83,14 +102,14 @@ const server = http.createServer(async (req, res) => {
         type: error.type || "embedding_proxy_error",
       },
     });
-    console.error(`[tei-batch-proxy] ${statusCode} ${error.stack || error.message}`);
+    logError(`[tei-batch-proxy] ${statusCode} ${error.stack || error.message}`);
   }
 });
 
 server.headersTimeout = Math.max(REQUEST_TIMEOUT_MS + 60000, 660000);
 server.requestTimeout = Math.max(REQUEST_TIMEOUT_MS + 60000, 660000);
 server.listen(PORT, () => {
-  console.log(
+  logInfo(
     `[tei-batch-proxy] listening on :${PORT}; upstream=${redactUrl(upstreamUrl)}; batch_size=${BATCH_SIZE}; concurrency=${UPSTREAM_CONCURRENCY}; upstream_ca=${UPSTREAM_CA_CERT_FILE || "system"}`,
   );
 });
@@ -171,7 +190,7 @@ async function postJsonWithRetries(body, incomingHeaders) {
       }
 
       const retryDelay = retryDelayMs(attempt, response.headers);
-      console.warn(
+      logWarn(
         `[tei-batch-proxy] upstream ${response.statusCode}; retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
       );
       await sleep(retryDelay);
@@ -182,7 +201,7 @@ async function postJsonWithRetries(body, incomingHeaders) {
       }
 
       const retryDelay = retryDelayMs(attempt);
-      console.warn(
+      logWarn(
         `[tei-batch-proxy] upstream error ${error.message}; retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
       );
       await sleep(retryDelay);
@@ -325,6 +344,40 @@ function mergeOpenAIEmbeddingResponses(batchResults, fallbackModel) {
   }
 
   return merged;
+}
+
+function validateEmbeddingDimensions(body, fallbackModel) {
+  const data = Array.isArray(body?.data) ? body.data : [];
+  const dimensions = embeddingDimensions(data);
+
+  if (dimensions.length > 0) {
+    logInfo(
+      `[tei-batch-proxy] embedding_dimensions=${dimensions.join(",")} model=${body.model || fallbackModel || "unknown"}`,
+    );
+  }
+
+  if (!EXPECTED_EMBEDDING_DIMENSIONS) {
+    return;
+  }
+
+  const badDimensions = dimensions.filter((dimension) => dimension !== EXPECTED_EMBEDDING_DIMENSIONS);
+  if (badDimensions.length > 0) {
+    throw httpError(
+      502,
+      body,
+      `Upstream embedding dimension mismatch: expected ${EXPECTED_EMBEDDING_DIMENSIONS}, got ${badDimensions.join(",")}`,
+    );
+  }
+}
+
+function embeddingDimensions(data) {
+  return Array.from(
+    new Set(
+      data
+        .map((item) => (Array.isArray(item?.embedding) ? item.embedding.length : null))
+        .filter((dimension) => Number.isInteger(dimension)),
+    ),
+  ).sort((a, b) => a - b);
 }
 
 function mergeUsage(target, source) {
@@ -549,6 +602,18 @@ function intEnv(name, defaultValue) {
   return parsed;
 }
 
+function optionalIntEnv(name) {
+  const value = process.env[name];
+  if (value === undefined || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
 function requiredEnv(name) {
   const value = process.env[name];
   if (!value) {
@@ -585,8 +650,42 @@ function redactUrl(url) {
   return copy.toString();
 }
 
-function logRequest(inputCount, batchCount, startedAt, statusCode) {
-  console.log(
-    `[tei-batch-proxy] status=${statusCode} inputs=${inputCount} batches=${batchCount} duration_ms=${Date.now() - startedAt}`,
+function logRequest(inputCount, batchCount, startedAt, statusCode, body = null, upstreamDurationsMs = []) {
+  const dimensions = body ? embeddingDimensions(Array.isArray(body.data) ? body.data : []) : [];
+  const dimensionsLog = dimensions.length > 0 ? ` dimensions=${dimensions.join(",")}` : "";
+  const upstreamTimingLog = formatUpstreamTiming(upstreamDurationsMs);
+  logInfo(
+    `[tei-batch-proxy] status=${statusCode} inputs=${inputCount} batches=${batchCount}${dimensionsLog}${upstreamTimingLog} duration_ms=${Date.now() - startedAt}`,
   );
+}
+
+function formatUpstreamTiming(upstreamDurationsMs) {
+  const timings = upstreamDurationsMs.filter((duration) => Number.isFinite(duration));
+  if (timings.length === 0) {
+    return "";
+  }
+  if (timings.length === 1) {
+    return ` upstream_ms=${timings[0]}`;
+  }
+
+  const total = timings.reduce((sum, duration) => sum + duration, 0);
+  const min = Math.min(...timings);
+  const max = Math.max(...timings);
+  return ` upstream_ms_total=${total} upstream_ms_min=${min} upstream_ms_max=${max}`;
+}
+
+function timestamped(message) {
+  return `${new Date().toISOString()} ${message}`;
+}
+
+function logInfo(message) {
+  console.log(timestamped(message));
+}
+
+function logWarn(message) {
+  console.warn(timestamped(message));
+}
+
+function logError(message) {
+  console.error(timestamped(message));
 }

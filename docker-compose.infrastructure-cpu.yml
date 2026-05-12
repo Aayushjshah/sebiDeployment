@@ -65,6 +65,7 @@ services:
       - MAX_RETRIES=8
       - RETRY_BASE_MS=1000
       - PROXY_PAYLOAD_LIMIT_BYTES=200000000
+      - EXPECTED_EMBEDDING_DIMENSIONS=1024
       - HTTPS_PROXY=${HTTPS_PROXY:-http://10.201.6.100:1080}
       - HTTP_PROXY=${HTTP_PROXY:-http://10.201.6.100:1080}
       - https_proxy=${https_proxy:-http://10.201.6.100:1080}

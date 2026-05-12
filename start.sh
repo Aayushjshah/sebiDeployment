@@ -452,15 +452,27 @@ install_cdac_certificate_in_vespa() {
 
   log "Installing CDAC certificate into Vespa Java truststore..."
   docker cp "${cert_path}" vespa:/tmp/cdac-airawat.pem
-  docker exec -u root -e VESPA_CDAC_CERT_ALIAS="${VESPA_CDAC_CERT_ALIAS}" vespa sh -lc '
+  if docker exec -u root -e VESPA_CDAC_CERT_ALIAS="${VESPA_CDAC_CERT_ALIAS}" vespa sh -lc '
     set -e
     cert_file=/tmp/cdac-airawat.pem
-    cacerts="$(find /etc/java /usr/lib/jvm -path "*/lib/security/cacerts" -type f 2>/dev/null | head -n 1 || true)"
+    command -v keytool >/dev/null 2>&1 || { echo "Java keytool not found" >&2; exit 1; }
+    cacerts=""
+    if [ -n "${JAVA_HOME:-}" ] && [ -f "${JAVA_HOME}/lib/security/cacerts" ]; then
+      cacerts="${JAVA_HOME}/lib/security/cacerts"
+    fi
+    if [ -z "${cacerts}" ]; then
+      cacerts="$(find /etc/java /usr/lib/jvm /usr/java /usr/local /opt/vespa -path "*/lib/security/cacerts" -type f 2>/dev/null | head -n 1 || true)"
+    fi
     [ -n "${cacerts}" ] || { echo "Java cacerts truststore not found" >&2; exit 1; }
     keytool -delete -alias "${VESPA_CDAC_CERT_ALIAS}" -keystore "${cacerts}" -storepass changeit >/dev/null 2>&1 || true
     keytool -importcert -trustcacerts -alias "${VESPA_CDAC_CERT_ALIAS}" -file "${cert_file}" -keystore "${cacerts}" -storepass changeit -noprompt >/dev/null
     keytool -list -alias "${VESPA_CDAC_CERT_ALIAS}" -keystore "${cacerts}" -storepass changeit >/dev/null
-  '
+  '; then
+    return 0
+  fi
+
+  warn "Could not install CDAC certificate into Vespa Java truststore; continuing because Vespa uses tei-batch-proxy over HTTP"
+  return 1
 }
 
 restart_vespa_after_truststore_update() {
@@ -559,8 +571,11 @@ start_services() {
   log "Starting infrastructure with Keycloak..."
   ${dc} "${INFRA_FILES[@]}" --profile keycloak up -d --pull never
   wait_for_vespa
-  install_cdac_certificate_in_vespa
-  restart_vespa_after_truststore_update
+  if install_cdac_certificate_in_vespa; then
+    restart_vespa_after_truststore_update
+  else
+    warn "Skipping Vespa restart after truststore update"
+  fi
   deploy_vespa_application
   wait_for_keycloak
 
