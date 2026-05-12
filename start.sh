@@ -43,7 +43,6 @@ REQUIRED_IMAGES=(
   "prom/prometheus:latest"
   "quay.io/keycloak/keycloak:26.0"
   "vespaengine/vespa:latest"
-  "xyne-vespa-gpu-embedder-sep:tag"
   "xynehq/xyne:latest"
 )
 
