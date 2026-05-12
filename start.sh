@@ -26,6 +26,10 @@ XYNE_APP_IMAGE="xynehq/xyne:latest"
 XYNE_APP_BASE_IMAGE="xynehq/xyne:airgap-base"
 XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"
 XYNE_SEBI_CA_CERT="certs/socnoc.crt"
+CDAC_HOST="${CDAC_HOST:-apis.airawat.cdac.in}"
+CDAC_PROXY="${CDAC_PROXY:-10.201.6.100:1080}"
+CDAC_CA_CERT="${CDAC_CA_CERT:-pem/cdac-ca.pem}"
+VESPA_CDAC_CERT_ALIAS="${VESPA_CDAC_CERT_ALIAS:-cdac-airawat}"
 
 REQUIRED_IMAGES=(
   "busybox:latest"
@@ -38,6 +42,7 @@ REQUIRED_IMAGES=(
   "postgres:15-alpine"
   "prom/prometheus:latest"
   "quay.io/keycloak/keycloak:26.0"
+  "vespaengine/vespa:latest"
   "xyne-vespa-gpu-embedder-sep:tag"
   "xynehq/xyne:latest"
 )
@@ -60,7 +65,7 @@ check_bundle_layout() {
   [ -d "${BUNDLE_DIR}/images" ] || die "Expected Docker image tarballs under ${BUNDLE_DIR}/images"
   [ -d "${BUNDLE_DIR}/grafana/provisioning" ] || die "Expected Grafana provisioning files under ${BUNDLE_DIR}/grafana/provisioning"
   [ -f "${SCRIPT_DIR}/tei-batch-proxy.js" ] || die "Expected TEI batch proxy script at ${SCRIPT_DIR}/tei-batch-proxy.js"
-  [ -f "${SCRIPT_DIR}/pem/cdac-ca.pem" ] || die "Expected CDAC CA certificate at ${SCRIPT_DIR}/pem/cdac-ca.pem"
+  mkdir -p "${SCRIPT_DIR}/pem"
 }
 
 detect_public_url() {
@@ -364,6 +369,34 @@ setup_permissions() {
   docker run --rm -v "${data_dir_abs}/promtail-data:/data" busybox:latest sh -c 'mkdir -p /data && chown -R 10001:10001 /data' 2>/dev/null || true
 }
 
+refresh_cdac_certificate() {
+  local cert_path="${SCRIPT_DIR}/${CDAC_CA_CERT}"
+  local cert_tmp
+  cert_tmp="$(mktemp)"
+
+  if [ "${XYNE_SKIP_CDAC_CERT_REFRESH:-false}" = "true" ]; then
+    [ -f "${cert_path}" ] || die "XYNE_SKIP_CDAC_CERT_REFRESH=true but ${cert_path} does not exist"
+    warn "Skipping CDAC certificate refresh because XYNE_SKIP_CDAC_CERT_REFRESH=true"
+    return
+  fi
+
+  log "Refreshing CDAC certificate chain through ${CDAC_PROXY}..."
+  mkdir -p "$(dirname "${cert_path}")"
+
+  docker run --rm --network xyne --entrypoint sh vespaengine/vespa:latest -lc \
+    "openssl s_client -proxy '${CDAC_PROXY}' -servername '${CDAC_HOST}' -connect '${CDAC_HOST}:443' -showcerts </dev/null 2>/dev/null | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p'" \
+    > "${cert_tmp}"
+
+  if ! grep -q -- "-----BEGIN CERTIFICATE-----" "${cert_tmp}"; then
+    rm -f "${cert_tmp}"
+    die "Could not capture CDAC certificate chain from ${CDAC_HOST} through ${CDAC_PROXY}"
+  fi
+
+  mv "${cert_tmp}" "${cert_path}"
+  chmod 0644 "${cert_path}"
+  info "Captured $(grep -c -- "-----BEGIN CERTIFICATE-----" "${cert_path}") certificate(s) in ${CDAC_CA_CERT}"
+}
+
 ensure_migrations() {
   local dc="$1"
   load_env_file
@@ -402,6 +435,55 @@ wait_for_postgres() {
     fi
     sleep 2
   done
+}
+
+wait_for_vespa() {
+  log "Waiting for Vespa config server..."
+  local attempts=0
+  until docker exec vespa curl -fsS http://localhost:19071/state/v1/health >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    if [ "${attempts}" -ge 90 ]; then
+      die "Vespa did not become ready"
+    fi
+    sleep 2
+  done
+}
+
+install_cdac_certificate_in_vespa() {
+  local cert_path="${SCRIPT_DIR}/${CDAC_CA_CERT}"
+  [ -f "${cert_path}" ] || die "Expected CDAC certificate at ${cert_path}"
+
+  log "Installing CDAC certificate into Vespa Java truststore..."
+  docker cp "${cert_path}" vespa:/tmp/cdac-airawat.pem
+  docker exec -u root -e VESPA_CDAC_CERT_ALIAS="${VESPA_CDAC_CERT_ALIAS}" vespa sh -lc '
+    set -e
+    cert_file=/tmp/cdac-airawat.pem
+    cacerts="$(find /etc/java /usr/lib/jvm -path "*/lib/security/cacerts" -type f 2>/dev/null | head -n 1 || true)"
+    [ -n "${cacerts}" ] || { echo "Java cacerts truststore not found" >&2; exit 1; }
+    keytool -delete -alias "${VESPA_CDAC_CERT_ALIAS}" -keystore "${cacerts}" -storepass changeit >/dev/null 2>&1 || true
+    keytool -importcert -trustcacerts -alias "${VESPA_CDAC_CERT_ALIAS}" -file "${cert_file}" -keystore "${cacerts}" -storepass changeit -noprompt >/dev/null
+    keytool -list -alias "${VESPA_CDAC_CERT_ALIAS}" -keystore "${cacerts}" -storepass changeit >/dev/null
+  '
+}
+
+restart_vespa_after_truststore_update() {
+  log "Restarting Vespa so Java reloads the updated truststore..."
+  docker restart vespa >/dev/null
+  wait_for_vespa
+}
+
+deploy_vespa_application() {
+  log "Deploying Vespa application package from /app..."
+  docker exec vespa sh -lc '
+    set -e
+    if command -v vespa-deploy >/dev/null 2>&1; then
+      vespa-deploy prepare /app
+      vespa-deploy activate
+    else
+      cd /app
+      vespa deploy .
+    fi
+  '
 }
 
 ensure_keycloak_database() {
@@ -479,6 +561,10 @@ start_services() {
 
   log "Starting infrastructure with Keycloak..."
   ${dc} "${INFRA_FILES[@]}" --profile keycloak up -d --pull never
+  wait_for_vespa
+  install_cdac_certificate_in_vespa
+  restart_vespa_after_truststore_update
+  deploy_vespa_application
   wait_for_keycloak
 
   log "Running app migrations..."
@@ -519,6 +605,7 @@ main() {
   configure_env
   validate_litellm_model_catalog
   setup_dirs
+  refresh_cdac_certificate
   process_prometheus_config
   open_firewall_port
   cleanup_conflicting_containers
