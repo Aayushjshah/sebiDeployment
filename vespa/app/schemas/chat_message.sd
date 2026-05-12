@@ -126,7 +126,7 @@ schema chat_message {
   }
 
   fieldset default {
-    fields: text,mentions,teamId,channelId,userId,threadId,app,entity,attachmentIds,domain,channelName,isPrivate
+    fields: text, mentions, teamId, channelId, userId, threadId, app, entity, attachmentIds, domain, channelName, isPrivate
   }
 
   rank-profile initial {
@@ -140,7 +140,7 @@ schema chat_message {
     }
 
     function vector_score() {
-      expression: closeness(field,text_embeddings)
+      expression: closeness(field, text_embeddings)
     }
 
     function scale(val) {
@@ -153,7 +153,7 @@ schema chat_message {
 
     function matchedFieldCount() {
       expression {
-        # The `matches` returns 1 if the field contains a match,otherwise 0
+        # The `matches` returns 1 if the field contains a match, otherwise 0
         matches(text) + matches(username) + matches(name)
       }
     }
@@ -164,7 +164,7 @@ schema chat_message {
           nativeRank(text) + 
           nativeRank(username) + 
           nativeRank(name)
-        ) / if(matchedFieldCount == 0,1,matchedFieldCount)
+        ) / if(matchedFieldCount == 0, 1, matchedFieldCount)
       }
     }
 
@@ -285,7 +285,7 @@ schema chat_message {
     }
 
     function document_age_days_gs() {
-      expression: max(0.0,if(isNan(attribute(updatedAt)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS,(now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
+      expression: max(0.0, if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS, (now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
     }
 
     function recency_bin_index_gs() {
@@ -301,7 +301,7 @@ schema chat_message {
     }
 
     function normalized_hybrid_relevance_gs() {
-      expression: max(0.0,min(hybrid_relevance_score_gs() / 10.0,RECENCY_BIN_MULTIPLIER_GS - 1.0))
+      expression: max(0.0, min(hybrid_relevance_score_gs() / 10.0, RECENCY_BIN_MULTIPLIER_GS - 1.0))
     }
 
     first-phase {

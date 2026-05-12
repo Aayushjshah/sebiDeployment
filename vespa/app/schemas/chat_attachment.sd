@@ -86,7 +86,7 @@ schema chat_attachment {
   import field chatRef.docId as channelId {}
 
 
-  field content_embeddings type tensor<bfloat16>(p{},v[1024]) {
+  field content_embeddings type tensor<bfloat16>(p{}, v[1024]) {
     indexing: input chunks | embed | attribute | index
     attribute {
       distance-metric: angular
@@ -94,7 +94,7 @@ schema chat_attachment {
   }
 
   fieldset default {
-    fields: title,filename,chunks,teamId,messageId
+    fields: title, filename, chunks, teamId, messageId
   }
 
   rank-profile default {
@@ -103,7 +103,7 @@ schema chat_attachment {
     }
 
     function vector_score() {
-      expression: closeness(field,content_embeddings)
+      expression: closeness(field, content_embeddings)
     }
 
     function scale(val) {

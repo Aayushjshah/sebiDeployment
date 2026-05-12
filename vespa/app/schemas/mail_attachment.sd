@@ -63,7 +63,7 @@ schema mail_attachment {
     
   }
 
-  field chunk_embeddings type tensor<bfloat16>(p{},v[1024])  {
+  field chunk_embeddings type tensor<bfloat16>(p{}, v[1024])  {
     indexing: input chunks | embed | attribute | index
     attribute {
       distance-metric: angular
@@ -84,7 +84,7 @@ schema mail_attachment {
   }
 
   fieldset default {
-    fields: filename,chunks
+    fields: filename, chunks
   }
 
   fieldset autocomplete {
@@ -110,16 +110,16 @@ schema mail_attachment {
     
     function document_age() {
       # Default document age assuming to 3 months when no timestamp is present
-      expression: max(if(isNan(attribute(timestamp)) == 1,THREE_MONTHS_IN_SECONDS,now() - (attribute(timestamp) / 1000)) / ONE_YEAR_IN_SECONDS,0)
+      expression: max(if(isNan(attribute(timestamp)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(timestamp) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
     }
 
     # Document score decays min to 0.5
     function doc_recency() {
-      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
     }
 
     function vector_score() {
-      expression: closeness(field,chunk_embeddings)
+      expression: closeness(field, chunk_embeddings)
     }
 
     function combined_bm25() {
@@ -128,17 +128,17 @@ schema mail_attachment {
 
     function matchedFieldCount() {
       expression {
-        # The `matches` returns 1 if the field contains a match,otherwise 0
+        # The `matches` returns 1 if the field contains a match, otherwise 0
         matches(filename) + matches(chunks)
       }
     }
 
     function combined_nativeRank() {
-      expression: (nativeRank(filename) + nativeRank(chunks)) / if(matchedFieldCount == 0,1,matchedFieldCount)
+      expression: (nativeRank(filename) + nativeRank(chunks)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
     }
 
     function chunk_scores() {
-      expression: elementwise(bm25(chunks),x,double)
+      expression: elementwise(bm25(chunks), x, double)
     }
   }
 
@@ -186,9 +186,9 @@ schema mail_attachment {
     }
 
     # Calculate document age in days with proper handling of missing timestamps
-    # Using timestamp for mail_attachment,assuming it's in milliseconds
+    # Using timestamp for mail_attachment, assuming it's in milliseconds
     function document_age_days() {
-      expression: max(0.0,if(isNan(attribute(timestamp)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS,(now() - (attribute(timestamp) / 1000)) / ONE_DAY_IN_SECONDS))
+      expression: max(0.0, if(isNan(attribute(timestamp)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS, (now() - (attribute(timestamp) / 1000)) / ONE_DAY_IN_SECONDS))
     }
 
     # Assign documents to time-based bins

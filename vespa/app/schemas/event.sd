@@ -16,7 +16,7 @@ schema event {
             index: enable-bm25
         }
 
-        # eventLink,different from joining link
+        # eventLink, different from joining link
         field url type string {
             indexing: index | attribute | summary
             match: exact
@@ -62,7 +62,7 @@ schema event {
             match: exact
         }
 
-        # A user can be creator,organizer or an attendee
+        # A user can be creator, organizer or an attendee
         struct user_info {
             field email type string {}
             field displayName type string {}
@@ -153,7 +153,7 @@ schema event {
     }
 
     fieldset default {
-        fields: name,description,attachmentFilenames,attendeesNames,app,url,baseUrl,attendees
+        fields: name, description, attachmentFilenames, attendeesNames, app, url, baseUrl, attendees
     }
 
     rank-profile initial {
@@ -176,16 +176,16 @@ schema event {
 
         function document_age() {
             # Default document age assuming to 3 months when no updatedAt timestamp is present
-            expression: max(if(isNan(attribute(updatedAt)) == 1,THREE_MONTHS_IN_SECONDS,now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS,0)
+            expression: max(if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
         }
 
         # Document score decays min to 0.5
         function doc_recency() {
-            expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+            expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
         }
 
         function vector_score() {
-            expression: closeness(field,chunk_embeddings)
+            expression: closeness(field, chunk_embeddings)
         }
 
         # reducing weightage for metadata fields
@@ -198,7 +198,7 @@ schema event {
 
         function matchedFieldCount() {
             expression {
-                 # The `matches` returns 1 if the field contains a match,otherwise 0
+                 # The `matches` returns 1 if the field contains a match, otherwise 0
                  matches(name) + matches(description) + matches(url)
             }
         }
@@ -210,7 +210,7 @@ schema event {
                         nativeRank(name) + 
                         nativeRank(description) + 
                         nativeRank(url)
-                    ) / if(matchedFieldCount == 0,1,matchedFieldCount)
+                    ) / if(matchedFieldCount == 0, 1, matchedFieldCount)
                 ) 
                 +
                 (META_FIELDS_DECAY * (nativeRank(attachmentFilenames) + nativeRank(attendeesNames)))
@@ -257,7 +257,7 @@ schema event {
         # Constants for recency binning
         constants {
             ONE_DAY_IN_SECONDS: 86400.0
-            THREE_MONTHS_IN_SECONDS: 7890000 # Using a default,consider if event schema needs different
+            THREE_MONTHS_IN_SECONDS: 7890000 # Using a default, consider if event schema needs different
             # Using a large multiplier ensures bin differences dominate
             RECENCY_BIN_MULTIPLIER: 1000000.0
             # Base score high enough to accommodate many bins
@@ -265,9 +265,9 @@ schema event {
         }
 
         # Calculate document age in days with proper handling of missing timestamps
-        # Using startTime for events,assuming it's in milliseconds
+        # Using startTime for events, assuming it's in milliseconds
         function document_age_days() {
-          expression: max(0.0,if(isNan(attribute(startTime)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS,(now() - (attribute(startTime) / 1000)) / ONE_DAY_IN_SECONDS))
+          expression: max(0.0, if(isNan(attribute(startTime)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS, (now() - (attribute(startTime) / 1000)) / ONE_DAY_IN_SECONDS))
         }
 
         # Assign documents to time-based bins

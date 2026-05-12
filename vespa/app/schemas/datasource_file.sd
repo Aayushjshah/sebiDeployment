@@ -80,12 +80,12 @@ schema datasource_file {
   import field dataSourceRef.docId as dataSourceId {}
 
   # Vector embeddings
-  field chunk_embeddings type tensor<bfloat16>(p{},v[1024]) {
+  field chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
     indexing: input chunks | embed | attribute | index
     attribute { distance-metric: angular }
   }
 
-  field image_chunk_embeddings type tensor<bfloat16>(p{},v[1024]) {
+  field image_chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
     indexing: input image_chunks | embed | attribute | index
     attribute { distance-metric: angular }
   }
@@ -98,9 +98,9 @@ schema datasource_file {
   }
 
 
-  fieldset default      { fields:  description,chunks,uploadedBy,fileName }
-  fieldset autocomplete { fields:  fileName,uploadedBy }
-  fieldset search       { fields:  description,chunks,fileName,uploadedBy }
+  fieldset default      { fields:  description, chunks, uploadedBy, fileName }
+  fieldset autocomplete { fields:  fileName, uploadedBy }
+  fieldset search       { fields:  description, chunks, fileName, uploadedBy }
 
     rank-profile initial {
     # Inputs for the query vector and alpha for hybrid search
@@ -123,16 +123,16 @@ schema datasource_file {
 
     function document_age() {
       # Default document age assuming to 3 months when no updatedAt timestamp is present
-      expression: max(if(isNan(attribute(updatedAt)) == 1,THREE_MONTHS_IN_SECONDS,now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS,0)
+      expression: max(if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
     }
 
     # Document score decays min to 0.5
     function doc_recency() {
-        expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+        expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
     }
 
     function vector_score() {
-      expression: closeness(field,chunk_embeddings) + closeness(field,image_chunk_embeddings)
+      expression: closeness(field, chunk_embeddings) + closeness(field, image_chunk_embeddings)
     }
 
     function combined_bm25() {
@@ -141,21 +141,21 @@ schema datasource_file {
 
     function matchedFieldCount() {
       expression {
-        # The `matches` returns 1 if the field contains a match,otherwise 0
+        # The `matches` returns 1 if the field contains a match, otherwise 0
         matches(fileName) + matches(chunks) + matches(image_chunks)
       }
     }
 
     function combined_nativeRank() {
-      expression: (nativeRank(fileName) + nativeRank(chunks) + nativeRank(image_chunks)) / if(matchedFieldCount == 0,1,matchedFieldCount)
+      expression: (nativeRank(fileName) + nativeRank(chunks) + nativeRank(image_chunks)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
     }
 
     function chunk_scores() {
-      expression: elementwise(bm25(chunks),x,double)
+      expression: elementwise(bm25(chunks), x, double)
     }
 
     function image_chunk_scores() {
-      expression: elementwise(bm25(image_chunks),x,double)
+      expression: elementwise(bm25(image_chunks), x, double)
     }
   }
 
@@ -209,10 +209,10 @@ schema datasource_file {
     # Calculate document age in days.
     # Uses THREE_MONTHS_IN_SECONDS from 'initial' profile as default age if updatedAt is missing.
     function document_age_days_gs() {
-      expression: max(0.0,if(isNan(attribute(updatedAt)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS,(now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
+      expression: max(0.0, if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS, (now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
     }
 
-    # Assign document to a recency bin index (0=today/newest,1=yesterday,etc.)
+    # Assign document to a recency bin index (0=today/newest, 1=yesterday, etc.)
     function recency_bin_index_gs() {
       expression: floor(document_age_days_gs() / query(bin_size_days_gs))
     }
@@ -223,7 +223,7 @@ schema datasource_file {
       expression: MAX_SCORE_BASE_GS - (recency_bin_index_gs() * RECENCY_BIN_MULTIPLIER_GS)
     }
 
-    # Calculate a hybrid relevance score,combining vector and text relevance.
+    # Calculate a hybrid relevance score, combining vector and text relevance.
     # vector_score() and combined_nativeRank are inherited from 'initial'.
     # query(alpha) is inherited from 'initial'.
     function hybrid_relevance_score_gs() {
@@ -231,16 +231,16 @@ schema datasource_file {
     }
 
     # Calculate a normalized version of the hybrid relevance score.
-    # The divisor (e.g.,10.0) should be tuned based on typical combined_nativeRank values
+    # The divisor (e.g., 10.0) should be tuned based on typical combined_nativeRank values
     # to ensure this score component is smaller than RECENCY_BIN_MULTIPLIER_GS.
     function normalized_hybrid_relevance_gs() {
-      expression: max(0.0,min(hybrid_relevance_score_gs() / 10.0,RECENCY_BIN_MULTIPLIER_GS - 1.0))
+      expression: max(0.0, min(hybrid_relevance_score_gs() / 10.0, RECENCY_BIN_MULTIPLIER_GS - 1.0))
     }
 
     # --- Ranking Expression ---
     first-phase {
       # Final score = Huge score from recency bin + smaller normalized hybrid relevance score.
-      # This guarantees sorting by recency bin first,then by hybrid relevance within the bin.
+      # This guarantees sorting by recency bin first, then by hybrid relevance within the bin.
       expression: recency_bin_score_gs() + normalized_hybrid_relevance_gs()
     }
 

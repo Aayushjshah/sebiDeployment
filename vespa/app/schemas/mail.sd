@@ -19,7 +19,7 @@ schema mail {
       indexing: attribute | summary
       attribute: fast-search
     }
-  # This will map the useremail with the docId,which is required for the Url construction
+  # This will map the useremail with the docId, which is required for the Url construction
   # every users has different docId for the same mail
     field userMap type map<string,string>{
       indexing: summary
@@ -110,7 +110,7 @@ schema mail {
       attribute: fast-search
     }
   }
-  field chunk_embeddings type tensor<bfloat16>(p{},v[1024])  {
+  field chunk_embeddings type tensor<bfloat16>(p{}, v[1024])  {
     indexing: input chunks | embed | attribute | index
     attribute {
       distance-metric: angular
@@ -130,14 +130,14 @@ schema mail {
   }
 
   fieldset default {
-    fields: subject,app,entity,chunks,attachmentFilenames,from,to,cc,bcc,labels
+    fields: subject, app, entity, chunks, attachmentFilenames, from, to, cc, bcc, labels
   }
 
   fieldset autocomplete {
-    fields: subject,app,entity
+    fields: subject, app, entity
   }
 
-  # Hybrid search rank profile combining BM25 for subject and chunks,and vector search for chunk embeddings
+  # Hybrid search rank profile combining BM25 for subject and chunks, and vector search for chunk embeddings
     rank-profile initial {
       inputs {
         query(e) tensor<bfloat16>(v[1024])  # Query embedding
@@ -157,16 +157,16 @@ schema mail {
 
       function document_age() {
         # Default document age assuming to 3 months when no updateAt timestamp is present
-        expression: max(if(isNan(attribute(timestamp)) == 1,THREE_MONTHS_IN_SECONDS,now() - (attribute(timestamp) / 1000)) / ONE_YEAR_IN_SECONDS,0)
+        expression: max(if(isNan(attribute(timestamp)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(timestamp) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
       }
 
       # Document score decays min to 0.5
       function doc_recency() {
-        expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+        expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
       }
 
       function vector_score() {
-        expression: closeness(field,chunk_embeddings)
+        expression: closeness(field, chunk_embeddings)
       }
 
       function combined_bm25() {
@@ -175,7 +175,7 @@ schema mail {
 
       function matchedFieldCount() {
         expression {
-          # The `matches` returns 1 if the field contains a match,otherwise 0
+          # The `matches` returns 1 if the field contains a match, otherwise 0
           matches(subject) + matches(chunks) + matches(from) + matches(to) + matches(cc) + matches(bcc)
         }
       }
@@ -192,13 +192,13 @@ schema mail {
         expression {
           if(query(is_intent_search) == 1.0,
             simplePeopleRank,
-            ((nativeRank(subject) + nativeRank(chunks) + peopleRank) / if(matchedFieldCount == 0,1,matchedFieldCount))
+            ((nativeRank(subject) + nativeRank(chunks) + peopleRank) / if(matchedFieldCount == 0, 1, matchedFieldCount))
           )
         }
       }
 
       function chunk_scores() {
-        expression: elementwise(bm25(chunks),x,double)
+        expression: elementwise(bm25(chunks), x, double)
       }
 
 
@@ -250,7 +250,7 @@ schema mail {
 
     # Calculate document age in days with proper handling of missing timestamps
     function document_age_days() {
-      expression: max(0.0,if(isNan(attribute(timestamp)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS,(now() - (attribute(timestamp) / 1000)) / ONE_DAY_IN_SECONDS))
+      expression: max(0.0, if(isNan(attribute(timestamp)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS, (now() - (attribute(timestamp) / 1000)) / ONE_DAY_IN_SECONDS))
     }
 
     # Assign documents to time-based bins
@@ -272,7 +272,7 @@ schema mail {
     # --- Ranking Expression ---
     first-phase {
       # Final score = Score from recency bin + full hybrid relevance score
-      # This ensures recent documents always win,but relevance is preserved within bins
+      # This ensures recent documents always win, but relevance is preserved within bins
       expression: recency_bin_score() + hybrid_relevance_score()
     }
 
