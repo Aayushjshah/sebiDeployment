@@ -136,6 +136,8 @@ services:
   vespa-deploy:
     image: vespa-deploy:latest
     container_name: vespa-deploy
+    profiles:
+      - manual
     depends_on:
       vespa:
         condition: service_started
