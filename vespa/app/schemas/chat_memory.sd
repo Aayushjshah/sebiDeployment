@@ -59,7 +59,7 @@ schema chat_memory {
     }
   }
 
-  field text_embeddings type tensor<bfloat16>(v[DIMS]) {
+  field text_embeddings type tensor<bfloat16>(v[1024]) {
     indexing: input text | embed | attribute | index
     attribute { distance-metric: angular }
   }
@@ -70,7 +70,7 @@ schema chat_memory {
 
   rank-profile initial {
     inputs {
-      query(e) tensor<bfloat16>(v[DIMS])
+      query(e) tensor<bfloat16>(v[1024])
       query(alpha) double
       query(recency_decay_rate) double
     }
