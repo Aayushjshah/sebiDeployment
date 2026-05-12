@@ -62,7 +62,7 @@ get_docker_compose_cmd() {
 }
 
 check_bundle_layout() {
-  [ -d "${BUNDLE_DIR}/images" ] || die "Expected Docker image tarballs under ${BUNDLE_DIR}/images"
+  [ -d "${BUNDLE_DIR}/images" ] || warn "No images directory found at ${BUNDLE_DIR}/images; will rely on already-loaded Docker images"
   [ -d "${BUNDLE_DIR}/grafana/provisioning" ] || die "Expected Grafana provisioning files under ${BUNDLE_DIR}/grafana/provisioning"
   [ -f "${SCRIPT_DIR}/tei-batch-proxy.js" ] || die "Expected TEI batch proxy script at ${SCRIPT_DIR}/tei-batch-proxy.js"
   mkdir -p "${SCRIPT_DIR}/pem"
@@ -281,12 +281,10 @@ load_images() {
   local tarfiles=("${image_dir}"/*.tar)
   shopt -u nullglob
 
-  if [ "${#tarfiles[@]}" -eq 0 ]; then
-    die "No image tar files found under ${image_dir}"
-  fi
-
   if [ "${XYNE_SKIP_IMAGE_LOAD:-false}" = "true" ]; then
     warn "Skipping docker load because XYNE_SKIP_IMAGE_LOAD=true"
+  elif [ "${#tarfiles[@]}" -eq 0 ]; then
+    warn "No image tar files found under ${image_dir}; checking already-loaded Docker images"
   else
     local tarfile
     for tarfile in "${tarfiles[@]}"; do
@@ -305,7 +303,7 @@ load_images() {
 
   if [ "${#missing[@]}" -gt 0 ]; then
     printf "%s\n" "${missing[@]}" >&2
-    die "Required Docker images are missing after loading tarballs"
+    die "Required Docker images are missing locally. Add tarballs under ${image_dir}, or load these images before running start.sh"
   fi
 
   log "All required images are available locally"
