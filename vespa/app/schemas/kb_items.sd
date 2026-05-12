@@ -156,12 +156,12 @@ schema kb_items {
   }
 
   # Vector embeddings
-  field chunk_embeddings type tensor<bfloat16>(p{}, v[768]) {
+  field chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
     indexing: input chunks | embed | attribute | index
     attribute { distance-metric: angular }
   }
 
-  field image_chunk_embeddings type tensor<bfloat16>(p{}, v[768]) {
+  field image_chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
     indexing: input image_chunks | embed | attribute | index
     attribute { distance-metric: angular }
   }
@@ -180,7 +180,7 @@ schema kb_items {
   rank-profile initial {
     # Inputs for the query vector and alpha for hybrid search
     inputs {
-      query(e) tensor<bfloat16>(v[768])  # Query embedding
+      query(e) tensor<bfloat16>(v[1024])  # Query embedding
       query(alpha) double  # Alpha parameter for hybrid weight
       query(recency_decay_rate) double
     }
