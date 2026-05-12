@@ -59,7 +59,7 @@ schema chat_memory {
     }
   }
 
-  field text_embeddings type tensor<bfloat16>(v[1024]) {
+  field text_embeddings type tensor<bfloat16>(v[DIMS]) {
     indexing: input text | embed | attribute | index
     attribute { distance-metric: angular }
   }
@@ -70,7 +70,7 @@ schema chat_memory {
 
   rank-profile initial {
     inputs {
-      query(e) tensor<bfloat16>(v[1024])
+      query(e) tensor<bfloat16>(v[DIMS])
       query(alpha) double
       query(recency_decay_rate) double
     }
@@ -79,13 +79,13 @@ schema chat_memory {
       MAX_DOC_DECAY: 0.5
     }
     function document_age() {
-      expression: max(0,(now() - (attribute(createdAt) / 1000)) / ONE_YEAR_IN_SECONDS)
+      expression: max(0, (now() - (attribute(createdAt) / 1000)) / ONE_YEAR_IN_SECONDS)
     }
     function doc_recency() {
-      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
     }
     function vector_score() {
-      expression: closeness(field,text_embeddings)
+      expression: closeness(field, text_embeddings)
     }
     function combined_bm25() {
       expression: bm25(text)

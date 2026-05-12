@@ -184,16 +184,16 @@ schema user {
     }
 
     fieldset autocomplete {
-        fields: name,email,app,entity,photoLink
+        fields: name, email, app, entity, photoLink
     }
 
     fieldset default {
-        fields: name,email,app,entity,photoLink,creationTime
+        fields: name, email, app, entity, photoLink, creationTime
     }
 
     rank-profile initial {
        inputs {
-            query(e) tensor<bfloat16>(v[1024])
+            query(e) tensor<bfloat16>(v[DIMS])
             query(alpha) double 
         }
 
@@ -207,13 +207,13 @@ schema user {
         
         function matchedFieldCount() {
             expression {
-                # The `matches` returns 1 if the field contains a match,otherwise 0
+                # The `matches` returns 1 if the field contains a match, otherwise 0
                 matches(name) + matches(email)
             }
         }
 
         function combined_nativeRank(){
-            expression: (nativeRank(name) +  nativeRank(email)) / if(matchedFieldCount == 0,1,matchedFieldCount)
+            expression: (nativeRank(name) +  nativeRank(email)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
         }
 
     }
@@ -264,9 +264,9 @@ rank-profile title_boosted_hybrid inherits initial {
         }
 
         # Calculate document age in days with proper handling of missing timestamps
-        # Using lastLoggedIn for user,assuming it's in milliseconds
+        # Using lastLoggedIn for user, assuming it's in milliseconds
         function document_age_days() {
-          expression: max(0.0,if(isNan(attribute(lastLoggedIn)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS,(now() - (attribute(lastLoggedIn) / 1000)) / ONE_DAY_IN_SECONDS))
+          expression: max(0.0, if(isNan(attribute(lastLoggedIn)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS, (now() - (attribute(lastLoggedIn) / 1000)) / ONE_DAY_IN_SECONDS))
         }
 
         # Assign documents to time-based bins

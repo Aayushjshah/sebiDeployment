@@ -115,7 +115,7 @@ schema chat_container {
         }
     }
 
-    field chunk_embeddings type tensor<bfloat16>(v[1024]) {
+    field chunk_embeddings type tensor<bfloat16>(v[384]) {
         indexing: (input name || "") . " " . (input topic || "") . " " . (input description || "") | embed | attribute | index
         attribute {
             distance-metric: angular
@@ -123,12 +123,12 @@ schema chat_container {
     }
 
     fieldset default {
-        fields: name,topic,description
+        fields: name, topic, description
     }
 
     rank-profile initial {
         inputs {
-            query(e) tensor<bfloat16>(v[1024])
+            query(e) tensor<bfloat16>(v[384])
             query(alpha) double 
         }
 
@@ -141,7 +141,7 @@ schema chat_container {
         }
 
         function vector_score() {
-            expression: closeness(field,chunk_embeddings)
+            expression: closeness(field, chunk_embeddings)
         }
 
         function combined_bm25() {
@@ -150,7 +150,7 @@ schema chat_container {
 
         function matchedFieldCount() {
             expression {
-                 # The `matches` returns 1 if the field contains a match,otherwise 0
+                 # The `matches` returns 1 if the field contains a match, otherwise 0
                  matches(name) + matches(topic) + matches(description)
             }
         }
@@ -161,7 +161,7 @@ schema chat_container {
                     nativeRank(name) + 
                     nativeRank(topic) + 
                     nativeRank(description)
-                ) / if(matchedFieldCount == 0,1,matchedFieldCount)
+                ) / if(matchedFieldCount == 0, 1, matchedFieldCount)
             }
         }
 

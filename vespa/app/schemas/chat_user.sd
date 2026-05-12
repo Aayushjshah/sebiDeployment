@@ -70,7 +70,7 @@ schema chat_user {
         }
     }
 
-    field chunk_embeddings type tensor<bfloat16>(v[1024]) {
+    field chunk_embeddings type tensor<bfloat16>(v[DIMS]) {
         indexing: (input name || "")  . " " .  (input statusText || "") . " " .  (input email || "") . " " .  (input title || "") | embed | attribute | index
         attribute {
             distance-metric: angular
@@ -99,7 +99,7 @@ schema chat_user {
 
     # Field sets for search
     fieldset default {
-        fields: name,email,title,statusText
+        fields: name, email, title, statusText
     }
 
     document-summary autocomplete {
@@ -121,14 +121,14 @@ schema chat_user {
     }
 
     fieldset autocomplete {
-        fields: name,email,app,entity,image
+        fields: name, email, app, entity, image
     }
 
 
     rank-profile initial {
         inputs {
             query(alpha) double
-            query(e) tensor<bfloat16>(v[1024])
+            query(e) tensor<bfloat16>(v[DIMS])
         }
 
         function scale(val) {
@@ -140,7 +140,7 @@ schema chat_user {
         }
 
         function vector_score() {
-            expression: closeness(field,chunk_embeddings)
+            expression: closeness(field, chunk_embeddings)
         }
 
         function combined_bm25() {
@@ -217,7 +217,7 @@ schema chat_user {
     }
 
     function document_age_days_gs() {
-      expression: max(0.0,if(isNan(attribute(updatedAt)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS,(now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
+      expression: max(0.0, if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS, (now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
     }
 
     function recency_bin_index_gs() {
@@ -233,7 +233,7 @@ schema chat_user {
     }
 
     function normalized_hybrid_relevance_gs() {
-      expression: max(0.0,min(hybrid_relevance_score_gs() / 10.0,RECENCY_BIN_MULTIPLIER_GS - 1.0))
+      expression: max(0.0, min(hybrid_relevance_score_gs() / 10.0, RECENCY_BIN_MULTIPLIER_GS - 1.0))
     }
 
     first-phase {

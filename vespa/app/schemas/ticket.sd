@@ -13,7 +13,7 @@ schema ticket {
       match: exact
     }
 
-   # App identifier (e.g.,"zoho-desk","jira","linear")
+   # App identifier (e.g., "zoho-desk", "jira", "linear")
     field app type string {
       indexing: attribute | summary
       attribute: fast-search
@@ -62,7 +62,7 @@ schema ticket {
       attribute: fast-search
     }
 
-   # Department display name (e.g. "Support","Engineering")
+   # Department display name (e.g. "Support", "Engineering")
    # Helps filtering and analytics by department.
     field departmentName type string {
       indexing: attribute | summary | index
@@ -71,7 +71,7 @@ schema ticket {
     }
 
    # Account (company) name that owns the ticket (from accountId mapping)
-   # Useful for org-level analytics (e.g.,all tickets from a merchant).
+   # Useful for org-level analytics (e.g., all tickets from a merchant).
     field accountName type string {
       indexing: attribute | summary | index
       attribute: fast-search
@@ -109,7 +109,7 @@ schema ticket {
       index: enable-bm25
     }
 
-   # Category grouping (e.g.,"Production Configurations")
+   # Category grouping (e.g., "Production Configurations")
    # For broad classification and filtering.
     field category type string {
       indexing: attribute | summary | index
@@ -124,19 +124,19 @@ schema ticket {
       index: enable-bm25
     }
 
-   # Ticket type: Incident,Problem,Request,or Question
+   # Ticket type: Incident, Problem, Request, or Question
     field classification type string {
       indexing: attribute | summary
       attribute: fast-search
     }
 
-   # Ticket urgency (High,Medium,Low)
+   # Ticket urgency (High, Medium, Low)
     field priority type string {
       indexing: attribute | summary
       attribute: fast-search
     }
 
-   # Current ticket state (Open,Closed,On Hold)
+   # Current ticket state (Open, Closed, On Hold)
     field status type string {
       indexing: attribute | summary
       attribute: fast-search
@@ -154,13 +154,13 @@ schema ticket {
       indexing: attribute | summary
     }
 
-   # Source of ticket creation (Agent,System,API,Manual)
+   # Source of ticket creation (Agent, System, API, Manual)
     field sourceType type string {
       indexing: attribute | summary
       attribute: fast-search
     }
 
-   # Platform identifier (zoho-desk,jira,linear,asana,etc.)
+   # Platform identifier (zoho-desk, jira, linear, asana, etc.)
    # Identifies which ticketing system this ticket originated from
     field platform type string {
       indexing: attribute | summary
@@ -197,7 +197,7 @@ schema ticket {
       index: enable-bm25
     }
 
-   # Channel through which ticket was created (Email,Phone,Chat,Web,etc.)
+   # Channel through which ticket was created (Email, Phone, Chat, Web, etc.)
     field channel type string {
       indexing: attribute | summary
       attribute: fast-search
@@ -332,7 +332,7 @@ schema ticket {
   # 6. Thread & Comment Structures
     ##########################################
 
-  # Struct: individual attachment info (e.g.,logs,screenshots)
+  # Struct: individual attachment info (e.g., logs, screenshots)
     struct attachmentType {
       field attachmentId type string {}
       field attachmentName type string {}
@@ -344,7 +344,7 @@ schema ticket {
     }
 
    # Struct: one message in thread or comment
-   # Includes id,text,author,attachments,and reference link
+   # Includes id, text, author, attachments, and reference link
     struct messageSchema {
       field id type string {}
       field messageText type string {}
@@ -424,8 +424,8 @@ schema ticket {
   ##########################################
 
   # Single combined embedding for all ticket content
-  # Combines subject,description,thread summary,comment summary,and resolution summary
-  field chunk_embeddings type tensor<bfloat16>(v[1024]) {
+  # Combines subject, description, thread summary, comment summary, and resolution summary
+  field chunk_embeddings type tensor<bfloat16>(v[768]) {
     indexing: (input subject || "") . " " . (input description || "") . " " . (input threadSummary || "") . " " . (input commentSummary || "") . " " . (input wholeResolutionSummary || "") | embed | attribute | index
     attribute { distance-metric: angular }
   }
@@ -450,7 +450,7 @@ schema ticket {
   # 10. Fieldsets (for query scoping)
   ##########################################
   fieldset default {
-    fields: subject,description,threadSummary,commentSummary,wholeResolutionSummary
+    fields: subject, description, threadSummary, commentSummary, wholeResolutionSummary
   }
 
   fieldset autocomplete {
@@ -478,7 +478,7 @@ schema ticket {
   # Hybrid: combines BM25 + vector similarity
   rank-profile hybrid {
     inputs {
-      query(q) tensor<bfloat16>(v[1024])
+      query(q) tensor<bfloat16>(v[768])
       query(alpha) double
     }
     constants {
@@ -489,14 +489,14 @@ schema ticket {
       RESOLUTION_BM25_WEIGHT: 1.0
     }
     first-phase {
-      expression: (query(alpha) * closeness(field,chunk_embeddings)) + ((1 - query(alpha)) * ((SUBJECT_BM25_WEIGHT * bm25(subject)) + (DESCRIPTION_BM25_WEIGHT * bm25(description)) + (THREAD_BM25_WEIGHT * bm25(threadSummary)) + (COMMENT_BM25_WEIGHT * bm25(commentSummary)) + (RESOLUTION_BM25_WEIGHT * bm25(wholeResolutionSummary))))
+      expression: (query(alpha) * closeness(field, chunk_embeddings)) + ((1 - query(alpha)) * ((SUBJECT_BM25_WEIGHT * bm25(subject)) + (DESCRIPTION_BM25_WEIGHT * bm25(description)) + (THREAD_BM25_WEIGHT * bm25(threadSummary)) + (COMMENT_BM25_WEIGHT * bm25(commentSummary)) + (RESOLUTION_BM25_WEIGHT * bm25(wholeResolutionSummary))))
     }
   }
 
   # Base rank profile with common functions and constants
   rank-profile initial {
     inputs {
-      query(e) tensor<bfloat16>(v[1024])
+      query(e) tensor<bfloat16>(v[768])
       query(alpha) double
       query(recency_decay_rate) double
     }
@@ -508,15 +508,15 @@ schema ticket {
     }
 
     function document_age() {
-      expression: max(if(isNan(attribute(createdTime)) == 1,THREE_MONTHS_IN_SECONDS,now() - (attribute(createdTime) / 1000)) / ONE_YEAR_IN_SECONDS,0)
+      expression: max(if(isNan(attribute(createdTime)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(createdTime) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
     }
 
     function doc_recency() {
-      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)),MAX_DOC_DECAY)
+      expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
     }
 
     function vector_score() {
-      expression: closeness(field,chunk_embeddings)
+      expression: closeness(field, chunk_embeddings)
     }
 
     function combined_bm25() {
@@ -530,7 +530,7 @@ schema ticket {
     }
 
     function combined_nativeRank() {
-      expression: (nativeRank(subject) + nativeRank(description) + nativeRank(threadSummary) + nativeRank(commentSummary)) / if(matchedFieldCount == 0,1,matchedFieldCount)
+      expression: (nativeRank(subject) + nativeRank(description) + nativeRank(threadSummary) + nativeRank(commentSummary)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
     }
   }
 
@@ -547,7 +547,7 @@ schema ticket {
   #   }
 
   #   function document_age_days() {
-  #     expression: max(0.0,if(isNan(attribute(createdTime)) == 1,THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS,(now() - (attribute(createdTime) / 1000)) / ONE_DAY_IN_SECONDS))
+  #     expression: max(0.0, if(isNan(attribute(createdTime)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS, (now() - (attribute(createdTime) / 1000)) / ONE_DAY_IN_SECONDS))
   #   }
 
   #   function recency_bin_index() {
