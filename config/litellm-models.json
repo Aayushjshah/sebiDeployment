@@ -1,0 +1,13 @@
+[
+  {
+    "id": "nemotron-120",
+    "labelName": "nemotron-120",
+    "actualName": "nvidia/nemotron-3-super",
+    "provider": "LiteLLM",
+    "reasoning": true,
+    "websearch": false,
+    "deepResearch": false,
+    "description": "CDAC Airawat Nemotron model"
+  }
+]
+
