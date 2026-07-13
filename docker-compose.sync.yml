@@ -1,6 +1,6 @@
 services:
   app-sync:
-    image: xynehq/xyne
+    image: xyne-sync-redis:demo-20260520-result-nonblocking-submit
     container_name: xyne-app-sync
     user: "${DOCKER_UID}:${DOCKER_GID}"
     ports:

@@ -1,4 +1,83 @@
 services:
+  lighton-ocr-wrapper:
+    image: lighton-ocr-server:final-amd64
+    container_name: lighton-ocr-wrapper
+    volumes: 
+      - /root/Documents/sebiDeployment/pem/cdac-ca.pem:/cdac-ca.crt:ro
+    ports:
+      - "8002:8000"
+    entrypoint: ["sh", "-c", "cat /cdac-ca.crt >> /usr/local/lib/python3.11/site-packages/certifi/cacert.pem && uvicorn main:app --host 0.0.0.0 --port 8000"]
+    environment:
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - PORT=8000
+      - LIGHTON_URL=${LIGHTON_URL:-https://apis.airawat.cdac.in/msebisec-lightonocr/v1/chat/completions}
+      - LIGHTON_MODEL=${LIGHTON_MODEL:-lightonai/LightOnOCR-2-1B}
+      - LIGHTON_ACCESS_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJkVWlJbWJpVWg2bjZmNWdnT3FBRkZJbWhFb0s4OEt0dCJ9.p7Fru4__GseBfgpzaPAeFaZWUmMsC7is3kD59hjMWT8
+      - LIGHTON_TIMEOUT_SECONDS=${LIGHTON_TIMEOUT_SECONDS:-60}
+      - LIGHTON_CONCURRENCY=${LIGHTON_CONCURRENCY:-15}
+      - LIGHTON_MAX_OUTPUT_TOKENS=4096
+      - LIGHTON_TEMPERATURE=${LIGHTON_TEMPERATURE:-0.0}
+      - LIGHTON_RETRIES=${LIGHTON_RETRIES:-2}
+      - LIGHTON_IMAGE_MAX_DIM=${LIGHTON_IMAGE_MAX_DIM:-1540}
+      - OCR_RENDER_MAX_DIM=${OCR_RENDER_MAX_DIM:-1540}
+      - OCR_PDF_RENDER_DPI=${OCR_PDF_RENDER_DPI:-200}
+      - OCR_MAX_PAGES=${OCR_MAX_PAGES:--1}
+      - OCR_OFFICE_CONVERT_TIMEOUT_SECONDS=${OCR_OFFICE_CONVERT_TIMEOUT_SECONDS:-120}
+      - OCR_TEXT_PAGE_WIDTH=${OCR_TEXT_PAGE_WIDTH:-1240}
+      - OCR_TEXT_PAGE_HEIGHT=${OCR_TEXT_PAGE_HEIGHT:-1754}
+      - OCR_TEXT_FONT_SIZE=${OCR_TEXT_FONT_SIZE:-28}
+      - OCR_TEXT_MARGIN=${OCR_TEXT_MARGIN:-72}
+      - OCR_TEXT_FONT_PATH=${OCR_TEXT_FONT_PATH:-/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf}
+      - LIGHTON_MAX_IMAGE_REGIONS_PER_PAGE=${LIGHTON_MAX_IMAGE_REGIONS_PER_PAGE:-256}
+      - E5_TOKENIZER_PATH=${E5_TOKENIZER_PATH:-/app/e5-tokenizer}
+      - MAX_TOKENS=${MAX_TOKENS:-460}
+      - CHUNK_OVERLAP_TOKENS=${CHUNK_OVERLAP_TOKENS:-12}
+      - IMAGE_CHUNK_MAX_TOKENS=${IMAGE_CHUNK_MAX_TOKENS:-460}
+      - REDIS_URL=${REDIS_URL:-redis://xyne-redis:6379/0}
+      - OCR_RESULTS_STREAM=${OCR_RESULTS_STREAM:-docling:results}
+      - OCR_RESULT_KEY_PREFIX=${OCR_RESULT_KEY_PREFIX:-docling:result}
+      - OCR_RESULT_TTL_SECONDS=${OCR_RESULT_TTL_SECONDS:-604800}
+      - OCR_ASYNC_JOB_TTL_SECONDS=${OCR_ASYNC_JOB_TTL_SECONDS:-86400}
+      - OCR_ASYNC_MAX_INFLIGHT=${OCR_ASYNC_MAX_INFLIGHT:-1}
+      - OCR_ASYNC_GLOBAL_MAX_INFLIGHT=${OCR_ASYNC_GLOBAL_MAX_INFLIGHT:--1}
+      - OCR_ASYNC_GLOBAL_ADMISSION_KEY=${OCR_ASYNC_GLOBAL_ADMISSION_KEY:-docling:async:global:active}
+      - OCR_ASYNC_GLOBAL_ADMISSION_LEASE_TTL_SECONDS=${OCR_ASYNC_GLOBAL_ADMISSION_LEASE_TTL_SECONDS:-86400}
+      - OCR_ASYNC_RETRY_AFTER_SECONDS=${OCR_ASYNC_RETRY_AFTER_SECONDS:-180}
+      - HTTP_PROXY=${HTTP_PROXY:-http://10.201.6.100:1080}
+      - HTTPS_PROXY=${HTTPS_PROXY:-http://10.201.6.100:1080}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,docling-server,xyne-redis}
+    networks:
+      - xyne
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: xyne-redis
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+#    ports:
+      #- "10.2.0.2:6379:6379"
+      # Existing VPC firewall allows docling-fleet -> xyne-sebi-sbx on 8091.
+      # Bind Redis here for Docling result publication until a dedicated
+      # tcp:6379 firewall rule is available.
+      #- "10.2.0.2:8091:6379"
+    volumes:
+      - /data/redis-data:/data
+    networks:
+      - xyne
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+
   prometheus-init:
     image: busybox
     volumes:
@@ -60,7 +139,7 @@ services:
       - PORT=8080
       - UPSTREAM_EMBEDDINGS_URL=https://apis.airawat.cdac.in/msebisec/v1/embeddings
       - EMBEDDINGS_BATCH_SIZE=512
-      - UPSTREAM_CONCURRENCY=1
+      - UPSTREAM_CONCURRENCY=2
       - REQUEST_TIMEOUT_MS=1800000
       - MAX_RETRIES=8
       - RETRY_BASE_MS=1000
@@ -90,7 +169,8 @@ services:
     image: vespaengine/vespa:latest
     container_name: vespa
     hostname: vespa
-    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    user: "root"
+    entrypoint: ["/bin/bash", "/vespa-ssl.sh"]
     depends_on:
       tei-batch-proxy:
         condition: service_started
@@ -99,6 +179,7 @@ services:
       - "${VESPA_QUERY_PORT:-8081}:8081"
       - "19071:19071"
     volumes:
+      - /root/Documents/sebiDeployment/scripts/vespa-ssl.sh:/vespa-ssl.sh:ro
       - /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/pki/tls/certs/ca-bundle.crt:ro
       - /root/Documents/sebiDeployment/vespa/app:/app
       - ${XYNE_DATA_DIR:-./data}/vespa-data:/opt/vespa/var

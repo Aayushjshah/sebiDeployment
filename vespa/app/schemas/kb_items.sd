@@ -1,479 +1,907 @@
 schema kb_items {
 
 
-  struct chunk_meta {
-    field chunk_index type int {}
-    field page_numbers type array<int> {}
-    field block_labels type array<string> {}
-    field bbox_l type double {}
-    field bbox_t type double {}
-    field bbox_r type double {}
-    field bbox_b type double {}
-    field bboxes_json type string {}
-    field width type int {}
-    field height type int {}
-    field headings type array<string> {}
-  }
-
-  document kb_items {
-
-    field docId type string {
-      indexing: attribute | summary
-      # Unique document identifier in Vespa
-    }
-    
-    field clId type string {
-      indexing: attribute | summary
-      attribute: fast-search
-      # Knowledge base ID for folder-level queries
-    }
-    
-    field itemId type string {
-      indexing: attribute | summary
-      attribute: fast-search
-      # Database item ID linking to kb_items table
-    }
-    
-    field pageTitle type string {
-      indexing: summary
-    }
-
-    field clFd type string {
-      indexing: attribute | summary
-      attribute: fast-search
-      # Parent folder ID for hierarchical queries (clfd-xxx)
-    }
-    # knowledge-base
-    field app type string {
-      indexing: attribute | summary
-      attribute: fast-search
-      match: exact
-    }
-
-    field fileName type string {
-      indexing: attribute | summary | index
-      attribute: fast-search
-      index { enable-bm25 }
-    }
-
-    field entity type string {
-      indexing: attribute | summary
-      attribute: fast-search
-      match: exact
-      # Entity type: file or folder
-    }
-
-    field description type string {
-      indexing: index | summary | attribute
-      index { enable-bm25 }
-    }
-    
-    field storagePath type string {
-      indexing: attribute | summary
-    }
-    
-    field toc_chunks type array<string> {
-      indexing: index | summary
-      index { enable-bm25 }
-    }
-    
-    field chunks type array<string> {
-      indexing: index | summary
-      index { enable-bm25 }
-    }
-
-    field image_chunks type array<string> {
-      indexing: index | summary
-      index { enable-bm25 }
-    }
 
 
-    field chunks_pos type array<long> {
-      indexing: attribute | summary
-    }
+ struct chunk_meta {
+   field chunk_index type int {}
+   field page_numbers type array<int> {}
+   field block_labels type array<string> {}
+   field bbox_l type double {}
+   field bbox_t type double {}
+   field bbox_r type double {}
+   field bbox_b type double {}
+   field bboxes_json type string {}
+   field width type int {}
+   field height type int {}
+   field headings type array<string> {}
+ }
 
-    field image_chunks_pos type array<long> {
-      indexing: attribute | summary
-    }
+
+ document kb_items {
 
 
-    field chunks_map type array<chunk_meta> {
-      indexing: summary
-      struct-field chunk_index { indexing: attribute | summary }
-      struct-field bbox_l { indexing: attribute | summary }
-      struct-field bbox_t { indexing: attribute | summary }
-      struct-field bbox_r { indexing: attribute | summary }
-      struct-field bbox_b { indexing: attribute | summary }
-      struct-field bboxes_json { indexing: summary }
-      struct-field width { indexing: attribute | summary }
-      struct-field height { indexing: attribute | summary }
-    }
-
-    field image_chunks_map type array<chunk_meta> {
-      indexing: summary
-      struct-field chunk_index { indexing: attribute | summary }
-      # Primitive fields can be attributes
-      struct-field bbox_l { indexing: attribute | summary }
-      struct-field bbox_t { indexing: attribute | summary }
-      struct-field bbox_r { indexing: attribute | summary }
-      struct-field bbox_b { indexing: attribute | summary }
-      struct-field bboxes_json { indexing: summary }
-      struct-field width { indexing: attribute | summary }
-      struct-field height { indexing: attribute | summary }
-      # Array fields are stored in summary only (not as attributes)
-    }
-    
-    field metadata type string {
-      indexing: attribute | summary
-    }
-    
-    field createdBy type string {
-      indexing: attribute | summary
-      attribute: fast-search
-    }
-
-    field duration type long {
-      indexing: attribute | summary
-    }
-
-    field mimeType type string {
-      indexing: attribute | summary
-    }
-    
-    field fileSize type long {
-      indexing: attribute | summary
-    }
-
-    field createdAt type long {
-      indexing: attribute | summary
-      attribute: fast-search
-    }
-
-    field updatedAt type long {
-      indexing: attribute | summary
-      attribute: fast-search
-    }
-  }
-
-  # Vector embeddings
-  field chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
-    indexing: input chunks | embed | attribute | index
-    attribute { distance-metric: angular }
-  }
-
-  field image_chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
-    indexing: input image_chunks | embed | attribute | index
-    attribute { distance-metric: angular }
-  }
-
-  # Fuzzy fileName
-  field fileName_fuzzy type string {
-    indexing: input fileName | index
-    index { enable-bm25 }
-    match { gram gram-size: 3 }
-  }
-
-  fieldset default      { fields:  description, toc_chunks, chunks, image_chunks, fileName, entity, createdBy, clFd }
-  fieldset autocomplete { fields:  fileName }
-  fieldset search       { fields:  description, toc_chunks, chunks, image_chunks, fileName, entity, clFd }
-
-  rank-profile initial {
-    # Inputs for the query vector and alpha for hybrid search
-    inputs {
-      query(e) tensor<bfloat16>(v[1024])  # Query embedding
-      query(alpha) double  # Alpha parameter for hybrid weight
-      query(recency_decay_rate) double
-    }
-
-    constants {
-      THREE_MONTHS_IN_SECONDS: 7890000
-      ONE_YEAR_IN_SECONDS: 31536000
-      MAX_DOC_DECAY: 0.5
-    }
-
-    # custom normalize function
-    function scale(val) {
-      expression: 2*atan(val/4)/(3.14159)
-    }
-
-    function document_age() {
-      # Default document age assuming to 3 months when no updatedAt timestamp is present
-      expression: max(if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
-    }
-
-    # Document score decays min to 0.5
-    function doc_recency() {
-        expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
-    }
-
-    function vector_score() {
-      expression: closeness(field, chunk_embeddings) + closeness(field, image_chunk_embeddings)
-    }
-
-    function combined_bm25() {
-      expression: bm25(fileName) + bm25(chunks) + bm25(image_chunks) + bm25(description)
-    }
-
-    function matchedFieldCount() {
-      expression {
-        # The `matches` returns 1 if the field contains a match, otherwise 0
-        matches(fileName) + matches(chunks) + matches(image_chunks) + matches(description)
-      }
-    }
-
-    function combined_nativeRank() {
-      expression: (nativeRank(fileName) + nativeRank(chunks) + nativeRank(image_chunks) + nativeRank(description)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
-    }
-
-    function chunk_scores() {
-      expression: elementwise(bm25(chunks), x, double)
-    }
-
-    function image_chunk_scores() {
-      expression: elementwise(bm25(image_chunks), x, double)
-    }
-  }
-
-  rank-profile default_native inherits initial {
-
-    first-phase {
-      expression: (query(alpha) * vector_score) + ((1 - query(alpha)) *  combined_nativeRank)
-    }
-
-    global-phase {
-      expression {
-        (
-          (query(alpha) * vector_score) + 
-          ((1 - query(alpha)) *  combined_nativeRank)
-        ) * doc_recency
-      }
-      rerank-count: 1000
-    }
-
-    match-features {
-      matchedFieldCount
-      vector_score
-      combined_nativeRank
-      nativeRank(fileName)
-      nativeRank(chunks)
-      nativeRank(description)
-      chunk_scores
-      image_chunk_scores
-      doc_recency
-    }
-  }
-
-  # New rank profile designed for sorting: implements recency binning with hybrid scoring within bins.
-  rank-profile global_sorted inherits initial {
-    # No global-phase section to allow sorting by first-phase score directly.
-
-    # Query inputs specific to this rank profile
-    inputs { # query(e) and query(alpha) are inherited from 'initial'
-      query(bin_size_days_gs) double: 1.0 # Default bin size is 1 day. Send with query: ?ranking.features.query(bin_size_days_gs)=7 for weekly bins
-    }
-
-    # Constants for recency binning within global_sorted
-    constants {
-      ONE_DAY_IN_SECONDS_GS: 86400.0         # 60 * 60 * 24
-      RECENCY_BIN_MULTIPLIER_GS: 10000.0     # Must be > max value of normalized_hybrid_relevance_gs. Adjust if needed.
-      MAX_SCORE_BASE_GS: 1000000000.0      # Large base score to ensure positive scores and separation.
-    }
-
-    # Helper Functions for recency binning specific to global_sorted
-
-    # Calculate document age in days.
-    # Uses THREE_MONTHS_IN_SECONDS from 'initial' profile as default age if updatedAt is missing.
-    function document_age_days_gs() {
-      expression: max(0.0, if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS, (now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
-    }
-
-    # Assign document to a recency bin index (0=today/newest, 1=yesterday, etc.)
-    function recency_bin_index_gs() {
-      expression: floor(document_age_days_gs() / query(bin_size_days_gs))
-    }
-
-    # Calculate a large score based purely on the recency bin.
-    # Newer bins (lower index) get significantly higher scores.
-    function recency_bin_score_gs() {
-      expression: MAX_SCORE_BASE_GS - (recency_bin_index_gs() * RECENCY_BIN_MULTIPLIER_GS)
-    }
-
-    # Calculate a hybrid relevance score, combining vector and text relevance.
-    # vector_score() and combined_nativeRank are inherited from 'initial'.
-    # query(alpha) is inherited from 'initial'.
-    function hybrid_relevance_score_gs() {
-      expression: (query(alpha) * vector_score()) + ((1 - query(alpha)) * combined_nativeRank)
-    }
-
-    # Calculate a normalized version of the hybrid relevance score.
-    # The divisor (e.g., 10.0) should be tuned based on typical combined_nativeRank values
-    # to ensure this score component is smaller than RECENCY_BIN_MULTIPLIER_GS.
-    function normalized_hybrid_relevance_gs() {
-      expression: max(0.0, min(hybrid_relevance_score_gs() / 10.0, RECENCY_BIN_MULTIPLIER_GS - 1.0))
-    }
-
-    # --- Ranking Expression ---
-    first-phase {
-      # Final score = Huge score from recency bin + smaller normalized hybrid relevance score.
-      # This guarantees sorting by recency bin first, then by hybrid relevance within the bin.
-      expression: recency_bin_score_gs() + normalized_hybrid_relevance_gs()
-    }
-
-    match-features {
-      query(alpha)
-      vector_score
-      matchedFieldCount
-      combined_nativeRank        
-      nativeRank(fileName)
-      nativeRank(chunks)
-      nativeRank(description)
-      chunk_scores
-      image_chunk_scores
-      document_age_days_gs
-      query(bin_size_days_gs)  
-      recency_bin_index_gs
-      recency_bin_score_gs
-      hybrid_relevance_score_gs 
-      normalized_hybrid_relevance_gs 
-    }
-  }
-
-  # will be use for single schema query
-  rank-profile default_bm25 inherits initial {
-
-    first-phase {
-      expression {
-        (
-          (query(alpha) * vector_score) + ((1 - query(alpha)) * combined_bm25)
-        )
-      }
-    }
-
-    global-phase {
-      expression {
-        (
-          (query(alpha) * vector_score) +
-          ((1 - query(alpha)) * scale(combined_bm25))
-        )
-      }
-      rerank-count: 1000
-    }
-
-     match-features {
-      vector_score
-      bm25(chunks)
-      bm25(fileName)
-      bm25(description)
-      scale(combined_bm25)
-      chunk_scores
-      image_chunk_scores
-    }
-  }
-
-  # change here for ai queries accordingly
-  rank-profile default_ai inherits initial {
-
-    first-phase {
-      expression: (query(alpha) * vector_score) + ((1 - query(alpha)) *  combined_nativeRank)
-    }
-
-    global-phase {
-      expression {
-        (
-          (query(alpha) * vector_score) + 
-          ((1 - query(alpha)) *  combined_nativeRank)
-        )
-      }
-      rerank-count: 1000
-    }
-
-    match-features {
-      vector_score
-      combined_nativeRank
-      nativeRank(fileName)
-      nativeRank(chunks)
-      nativeRank(description)
-      chunk_scores
-      image_chunk_scores
-      doc_recency
-    }
-  }
-
-  rank-profile title_boosted_hybrid inherits initial {
-  first-phase {
-    expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
-  }
+   field docId type string {
+     indexing: attribute | summary
+     # Unique document identifier in Vespa
+   }
   
+   field clId type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     # Knowledge base ID for folder-level queries
+   }
+  
+   field itemId type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     # Database item ID linking to kb_items table
+   }
+  
+   field pageTitle type string {
+     indexing: summary
+   }
+
+
+   field clFd type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     # Parent folder ID for hierarchical queries (clfd-xxx)
+   }
+   # knowledge-base
+   field app type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     match: exact
+   }
+
+
+   field fileName type string {
+     indexing: attribute | summary | index
+     attribute: fast-search
+     index { enable-bm25 }
+   }
+
+
+   field entity type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     match: exact
+     # Entity type: file or folder
+   }
+
+
+   field description type string {
+     indexing: index | summary | attribute
+     index { enable-bm25 }
+   }
+  
+   field documentOutline type string {
+     indexing: summary
+   }
+  
+   field storagePath type string {
+     indexing: attribute | summary
+   }
+  
+   field toc_chunks type array<string> {
+     indexing: index | summary
+     index { enable-bm25 }
+   }
+  
+   field chunks type array<string> {
+     indexing: index | summary
+     index { enable-bm25 }
+   }
+
+
+   field image_chunks type array<string> {
+     indexing: index | summary
+     index { enable-bm25 }
+   }
+
+
+
+
+   field chunks_pos type array<long> {
+     indexing: attribute | summary
+   }
+
+
+   field image_chunks_pos type array<long> {
+     indexing: attribute | summary
+   }
+
+
+
+
+   field chunks_map type array<chunk_meta> {
+     indexing: summary
+     struct-field chunk_index { indexing: attribute | summary }
+     struct-field bbox_l { indexing: attribute | summary }
+     struct-field bbox_t { indexing: attribute | summary }
+     struct-field bbox_r { indexing: attribute | summary }
+     struct-field bbox_b { indexing: attribute | summary }
+     struct-field bboxes_json { indexing: summary }
+     struct-field width { indexing: attribute | summary }
+     struct-field height { indexing: attribute | summary }
+   }
+
+
+   field image_chunks_map type array<chunk_meta> {
+     indexing: summary
+     struct-field chunk_index { indexing: attribute | summary }
+     # Primitive fields can be attributes
+     struct-field bbox_l { indexing: attribute | summary }
+     struct-field bbox_t { indexing: attribute | summary }
+     struct-field bbox_r { indexing: attribute | summary }
+     struct-field bbox_b { indexing: attribute | summary }
+     struct-field bboxes_json { indexing: summary }
+     struct-field width { indexing: attribute | summary }
+     struct-field height { indexing: attribute | summary }
+     # Array fields are stored in summary only (not as attributes)
+   }
+  
+   field metadata type string {
+     indexing: attribute | summary
+   }
+  
+   field createdBy type string {
+     indexing: attribute | summary
+     attribute: fast-search
+   }
+
+
+   field duration type long {
+     indexing: attribute | summary
+   }
+
+
+   field mimeType type string {
+     indexing: attribute | summary
+   }
+  
+   field fileSize type long {
+     indexing: attribute | summary
+   }
+
+
+   field createdAt type long {
+     indexing: attribute | summary
+     attribute: fast-search
+   }
+
+
+   field updatedAt type long {
+     indexing: attribute | summary
+     attribute: fast-search
+   }
+
+
+   # Extracted metadata fields (added 2026-05-17 for ID-based and entity retrieval)
+   field document_id type string {
+     indexing: attribute | summary
+     attribute: fast-search
+     rank: filter
+   }
+
+
+   field referenced_ids type array<string> {
+     indexing: attribute | summary | index
+     index { enable-bm25 }
+     attribute: fast-search
+     match: text
+   }
+
+
+   # Stored as YYYYMMDD int (e.g. 20251201) so range queries (>=, <=)
+   # work — Vespa's YQL range operators are numeric-only.
+   field document_date type long {
+     indexing: attribute | summary
+     attribute: fast-search
+   }
+
+
+   field pan_ids type array<string> {
+     indexing: attribute | summary
+     attribute: fast-search
+     rank: filter
+   }
+
+
+   field entities_involved type array<string> {
+     indexing: index | summary | attribute
+     index { enable-bm25 }
+     attribute: fast-search
+   }
+
+
+   # LLM-generated per-document summary (title/type/date/entities/topics/regulations/summary).
+   field ai_summary type string {
+     indexing: index | summary | attribute
+     index { enable-bm25 }
+     match: text
+   }
+ }
+
+
+ # Vector embeddings
+ field chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
+   indexing: input chunks | embed | attribute | index
+   attribute { distance-metric: angular }
+ }
+
+
+ field image_chunk_embeddings type tensor<bfloat16>(p{}, v[1024]) {
+   indexing: input image_chunks | embed | attribute | index
+   attribute { distance-metric: angular }
+ }
+
+
+ # Fuzzy fileName
+ field fileName_fuzzy type string {
+   indexing: input fileName | index
+   index { enable-bm25 }
+   match { gram gram-size: 3 }
+ }
+
+
+ fieldset default      { fields:  description, toc_chunks, chunks, image_chunks, fileName, entity, createdBy, clFd, referenced_ids, entities_involved, ai_summary }
+ fieldset autocomplete { fields:  fileName }
+ fieldset search       { fields:  description, toc_chunks, chunks, image_chunks, fileName, entity, clFd, ai_summary }
+
+
+ rank-profile initial {
+   # Inputs for the query vector and alpha for hybrid search
+   inputs {
+     query(e) tensor<bfloat16>(v[1024])  # Query embedding
+     query(alpha) double  # Alpha parameter for hybrid weight
+     query(recency_decay_rate) double
+   }
+
+
+   constants {
+     THREE_MONTHS_IN_SECONDS: 7890000
+     ONE_YEAR_IN_SECONDS: 31536000
+     MAX_DOC_DECAY: 0.5
+   }
+
+
+   # custom normalize function
+   function scale(val) {
+     expression: 2*atan(val/4)/(3.14159)
+   }
+
+
+   function document_age() {
+     # Default document age assuming to 3 months when no updatedAt timestamp is present
+     expression: max(if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS, now() - (attribute(updatedAt) / 1000)) / ONE_YEAR_IN_SECONDS, 0)
+   }
+
+
+   # Document score decays min to 0.5
+   function doc_recency() {
+       expression: max(1 / (1 + query(recency_decay_rate) * sqrt(document_age)), MAX_DOC_DECAY)
+   }
+
+
+   function vector_score() {
+     expression: closeness(field, chunk_embeddings) + closeness(field, image_chunk_embeddings)
+   }
+
+
+   function combined_bm25() {
+     expression: bm25(fileName) + bm25(chunks) + bm25(image_chunks) + bm25(description)
+   }
+
+
+   function matchedFieldCount() {
+     expression {
+       # The `matches` returns 1 if the field contains a match, otherwise 0
+       matches(fileName) + matches(chunks) + matches(image_chunks) + matches(description)
+     }
+   }
+
+
+   function combined_nativeRank() {
+     expression: (nativeRank(fileName) + nativeRank(chunks) + nativeRank(image_chunks) + nativeRank(description)) / if(matchedFieldCount == 0, 1, matchedFieldCount)
+   }
+
+
+   function chunk_scores() {
+     expression: elementwise(bm25(chunks), x, double)
+   }
+
+
+   function image_chunk_scores() {
+     expression: elementwise(bm25(image_chunks), x, double)
+   }
+ }
+
+
+ rank-profile default_native inherits initial {
+
+
+   constants {
+     W_FN:    0.45
+     W_CHUNKS: 0.20
+     W_TOC:    0.10
+     W_IMG:    0.05
+     W_DESC:   0.10
+
+
+     PROX_FN_W:  0.40
+     PROX_CH_W:  0.60
+     PROX_TOC_W: 0.20
+     PROX_IMG_W: 0.05
+   }
+
+
+   rank-properties {
+     bm25(fileName).k1: 1.2
+     bm25(fileName).b: 0.0
+     bm25(chunks).k1: 0.9
+     bm25(chunks).b: 0.75
+     bm25(image_chunks).k1: 0.9
+     bm25(image_chunks).b: 0.3
+     bm25(toc_chunks).k1: 0.9
+     bm25(toc_chunks).b: 0.3
+     bm25(description).k1: 1.0
+     bm25(description).b: 0.5
+     elementSimilarity(chunks).output.default:       "max((0.70*p + 0.20*o + 0.07*q + 0.03*f) * w)"
+     elementSimilarity(toc_chunks).output.default:   "max((0.70*p + 0.20*o + 0.07*q + 0.03*f) * w)"
+     elementSimilarity(image_chunks).output.default: "max((0.70*p + 0.20*o + 0.07*q + 0.03*f) * w)"
+   }
+
+
+   function weighted_bm25() {
+     expression {
+       W_FN     * scale(bm25(fileName)) +
+       W_CHUNKS * scale(bm25(chunks)) +
+       W_TOC    * scale(bm25(toc_chunks)) +
+       W_IMG    * scale(bm25(image_chunks)) +
+       W_DESC   * scale(bm25(description))
+     }
+   }
+
+
+   function filename_match_score() {
+     expression {
+       if(matches(fileName) == 0, 0.0,
+         0.40 * textSimilarity(fileName).proximity +
+         0.30 * textSimilarity(fileName).queryCoverage +
+         0.20 * textSimilarity(fileName).order +
+         0.10 * textSimilarity(fileName).fieldCoverage)
+     }
+   }
+
+
+   function chunk_proximity_score() {
+     expression: if(matches(chunks) == 0, 0.0, elementSimilarity(chunks))
+   }
+
+
+   function toc_proximity_score() {
+     expression: if(matches(toc_chunks) == 0, 0.0, elementSimilarity(toc_chunks))
+   }
+
+
+   function image_chunk_proximity_score() {
+     expression: if(matches(image_chunks) == 0, 0.0, elementSimilarity(image_chunks))
+   }
+
+
+   function lexical_score() {
+     # Title-boost: 5 * nativeRank(fileName) + 0.2 * nativeRank(chunks).
+     # Swapped 2026-05-18 — matches title_boosted_hybrid math so the agent
+     # (which calls SearchModes.NativeRank → default_native) automatically
+     # uses title-boost without a code change. The legacy weighted_bm25 /
+     # filename_match_score / chunk_proximity_score / *_proximity_score
+     # helpers are still defined above and exposed in match-features for
+     # diagnostics, but no longer drive the ranking score.
+     expression {
+       5 * nativeRank(fileName) + 0.2 * nativeRank(chunks)
+     }
+   }
+
+
+   first-phase {
+     expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * lexical_score)
+   }
+
+
+   global-phase {
+     expression {
+       (
+         (query(alpha) * vector_score) +
+         ((1 - query(alpha)) * lexical_score)
+       ) * doc_recency
+     }
+     rerank-count: 1000
+   }
+
+
+   match-features {
+     vector_score
+     weighted_bm25
+     filename_match_score
+     chunk_proximity_score
+     toc_proximity_score
+     image_chunk_proximity_score
+     lexical_score
+     bm25(fileName)
+     bm25(chunks)
+     bm25(toc_chunks)
+     bm25(description)
+     bm25(image_chunks)
+     textSimilarity(fileName).proximity
+     textSimilarity(fileName).queryCoverage
+     elementSimilarity(chunks)
+     elementSimilarity(toc_chunks)
+     elementSimilarity(image_chunks)
+     nativeRank(fileName)
+     nativeRank(chunks)
+     doc_recency
+     matchedFieldCount
+     chunk_scores
+     image_chunk_scores
+   }
+ }
+
+
+ # Metadata-aware variant: same as default_native + boost for matches in
+ # extracted metadata fields (referenced_ids, entities_involved).
+ rank-profile default_native_with_metadata inherits default_native {
+   constants {
+     META_REF_W: 0.5
+     META_ENT_W: 0.5
+   }
+
+
+   function metadata_score() {
+     expression {
+       META_REF_W * bm25(referenced_ids) + META_ENT_W * bm25(entities_involved)
+     }
+   }
+
+
+   first-phase {
+     expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * (lexical_score + metadata_score))
+   }
+
+
+   global-phase {
+     expression {
+       (
+         (query(alpha) * vector_score) +
+         ((1 - query(alpha)) * (lexical_score + metadata_score))
+       ) * doc_recency
+     }
+     rerank-count: 1000
+   }
+
+
+   match-features {
+     vector_score
+     lexical_score
+     metadata_score
+     weighted_bm25
+     filename_match_score
+     chunk_proximity_score
+     bm25(referenced_ids)
+     bm25(entities_involved)
+     bm25(fileName)
+     bm25(chunks)
+     doc_recency
+     chunk_scores
+   }
+ }
+
+
+ # ─────────────────────────────────────────────────────────────────────────
+ # tunable — every weight is a query-time input so a UI can override per call
+ # without redeploying the schema. Defaults reproduce a sensible hybrid mix.
+ # Inherits `initial` for: vector_score, doc_recency, chunk_scores,
+ # combined_nativeRank, query(e)/query(alpha)/query(recency_decay_rate).
+ # ─────────────────────────────────────────────────────────────────────────
+ rank-profile tunable inherits initial {
+
+
+   inputs {
+     query(W_CHUNKS_BM25)   double: 1.0
+     query(W_FILENAME_BM25) double: 0.8
+     query(W_DESC_BM25)     double: 0.5
+     query(W_TOC_BM25)      double: 0.4
+     query(W_IMG_BM25)      double: 0.3
+
+
+     query(PROX_CHUNKS)     double: 0.5
+     query(PROX_FILENAME)   double: 3.0
+
+
+     query(W_VECTOR)        double: 3.0
+     query(W_RECENCY)       double: 1.0
+
+
+     # textSimilarity(fileName) sub-feature mix
+     query(W_FN_PROX)       double: 0.40
+     query(W_FN_QCOV)       double: 0.30
+     query(W_FN_ORDER)      double: 0.20
+     query(W_FN_FCOV)       double: 0.10
+   }
+
+
+   function tunable_lexical() {
+     expression {
+         query(W_CHUNKS_BM25)   * bm25(chunks)
+       + query(W_FILENAME_BM25) * bm25(fileName)
+       + query(W_DESC_BM25)     * bm25(description)
+       + query(W_TOC_BM25)      * bm25(toc_chunks)
+       + query(W_IMG_BM25)      * bm25(image_chunks)
+     }
+   }
+
+
+   function tunable_filename_textsim() {
+     expression {
+         query(W_FN_PROX)  * textSimilarity(fileName).proximity
+       + query(W_FN_QCOV)  * textSimilarity(fileName).queryCoverage
+       + query(W_FN_ORDER) * textSimilarity(fileName).order
+       + query(W_FN_FCOV)  * textSimilarity(fileName).fieldCoverage
+     }
+   }
+
+
+   function tunable_proximity() {
+     expression {
+         query(PROX_CHUNKS)   * nativeProximity(chunks)
+       + query(PROX_FILENAME) * tunable_filename_textsim
+     }
+   }
+
+
+   function tunable_vector() {
+     expression: query(W_VECTOR) * vector_score
+   }
+
+
+   # Smooth recency: when W_RECENCY=0 → factor=1 (off); =1 → full doc_recency;
+   # =2 → exaggerated. doc_recency itself ranges roughly [0.5, 1.0].
+   function tunable_recency_factor() {
+     expression: 1.0 + query(W_RECENCY) * (doc_recency - 1.0)
+   }
+
+
+   function tunable_relevance_raw() {
+     expression: tunable_lexical + tunable_proximity + tunable_vector
+   }
+
+
+   first-phase {
+     expression: tunable_relevance_raw
+   }
+
+
+   global-phase {
+     expression: tunable_relevance_raw * tunable_recency_factor
+     rerank-count: 1000
+   }
+
+
+   match-features {
+     bm25(chunks)
+     bm25(fileName)
+     bm25(description)
+     bm25(toc_chunks)
+     bm25(image_chunks)
+     nativeProximity(chunks)
+     textSimilarity(fileName).proximity
+     textSimilarity(fileName).queryCoverage
+     textSimilarity(fileName).order
+     textSimilarity(fileName).fieldCoverage
+     vector_score
+     doc_recency
+     matches(chunks)
+     matches(fileName)
+     matches(description)
+     matches(toc_chunks)
+     matches(image_chunks)
+     chunk_scores
+     tunable_lexical
+     tunable_proximity
+     tunable_vector
+     tunable_filename_textsim
+     tunable_relevance_raw
+     tunable_recency_factor
+     queryTermCount
+   }
+ }
+
+
+ # New rank profile designed for sorting: implements recency binning with hybrid scoring within bins.
+ rank-profile global_sorted inherits initial {
+   # No global-phase section to allow sorting by first-phase score directly.
+
+
+   # Query inputs specific to this rank profile
+   inputs { # query(e) and query(alpha) are inherited from 'initial'
+     query(bin_size_days_gs) double: 1.0 # Default bin size is 1 day. Send with query: ?ranking.features.query(bin_size_days_gs)=7 for weekly bins
+   }
+
+
+   # Constants for recency binning within global_sorted
+   constants {
+     ONE_DAY_IN_SECONDS_GS: 86400.0         # 60 * 60 * 24
+     RECENCY_BIN_MULTIPLIER_GS: 10000.0     # Must be > max value of normalized_hybrid_relevance_gs. Adjust if needed.
+     MAX_SCORE_BASE_GS: 1000000000.0      # Large base score to ensure positive scores and separation.
+   }
+
+
+   # Helper Functions for recency binning specific to global_sorted
+
+
+   # Calculate document age in days.
+   # Uses THREE_MONTHS_IN_SECONDS from 'initial' profile as default age if updatedAt is missing.
+   function document_age_days_gs() {
+     expression: max(0.0, if(isNan(attribute(updatedAt)) == 1, THREE_MONTHS_IN_SECONDS / ONE_DAY_IN_SECONDS_GS, (now() - (attribute(updatedAt) / 1000)) / ONE_DAY_IN_SECONDS_GS))
+   }
+
+
+   # Assign document to a recency bin index (0=today/newest, 1=yesterday, etc.)
+   function recency_bin_index_gs() {
+     expression: floor(document_age_days_gs() / query(bin_size_days_gs))
+   }
+
+
+   # Calculate a large score based purely on the recency bin.
+   # Newer bins (lower index) get significantly higher scores.
+   function recency_bin_score_gs() {
+     expression: MAX_SCORE_BASE_GS - (recency_bin_index_gs() * RECENCY_BIN_MULTIPLIER_GS)
+   }
+
+
+   # Calculate a hybrid relevance score, combining vector and text relevance.
+   # vector_score() and combined_nativeRank are inherited from 'initial'.
+   # query(alpha) is inherited from 'initial'.
+   function hybrid_relevance_score_gs() {
+     expression: (query(alpha) * vector_score()) + ((1 - query(alpha)) * combined_nativeRank)
+   }
+
+
+   # Calculate a normalized version of the hybrid relevance score.
+   # The divisor (e.g., 10.0) should be tuned based on typical combined_nativeRank values
+   # to ensure this score component is smaller than RECENCY_BIN_MULTIPLIER_GS.
+   function normalized_hybrid_relevance_gs() {
+     expression: max(0.0, min(hybrid_relevance_score_gs() / 10.0, RECENCY_BIN_MULTIPLIER_GS - 1.0))
+   }
+
+
+   # --- Ranking Expression ---
+   first-phase {
+     # Final score = Huge score from recency bin + smaller normalized hybrid relevance score.
+     # This guarantees sorting by recency bin first, then by hybrid relevance within the bin.
+     expression: recency_bin_score_gs() + normalized_hybrid_relevance_gs()
+   }
+
+
+   match-features {
+     query(alpha)
+     vector_score
+     matchedFieldCount
+     combined_nativeRank       
+     nativeRank(fileName)
+     nativeRank(chunks)
+     nativeRank(description)
+     chunk_scores
+     image_chunk_scores
+     document_age_days_gs
+     query(bin_size_days_gs) 
+     recency_bin_index_gs
+     recency_bin_score_gs
+     hybrid_relevance_score_gs
+     normalized_hybrid_relevance_gs
+   }
+ }
+
+
+ # will be use for single schema query
+ rank-profile default_bm25 inherits initial {
+
+
+   first-phase {
+     expression {
+       (
+         (query(alpha) * vector_score) + ((1 - query(alpha)) * combined_bm25)
+       )
+     }
+   }
+
+
+   global-phase {
+     expression {
+       (
+         (query(alpha) * vector_score) +
+         ((1 - query(alpha)) * scale(combined_bm25))
+       )
+     }
+     rerank-count: 1000
+   }
+
+
+    match-features {
+     vector_score
+     bm25(chunks)
+     bm25(fileName)
+     bm25(description)
+     scale(combined_bm25)
+     chunk_scores
+     image_chunk_scores
+   }
+ }
+
+
+ # change here for ai queries accordingly
+ rank-profile default_ai inherits initial {
+
+
+   first-phase {
+     expression: (query(alpha) * vector_score) + ((1 - query(alpha)) *  combined_nativeRank)
+   }
+
+
+   global-phase {
+     expression {
+       (
+         (query(alpha) * vector_score) +
+         ((1 - query(alpha)) *  combined_nativeRank)
+       )
+     }
+     rerank-count: 1000
+   }
+
+
+   match-features {
+     vector_score
+     combined_nativeRank
+     nativeRank(fileName)
+     nativeRank(chunks)
+     nativeRank(description)
+     chunk_scores
+     image_chunk_scores
+     doc_recency
+   }
+ }
+
+
+ # title_boosted_with_metadata — title_boosted_hybrid + metadata fields
+ # using elementSimilarity for array-of-string identifiers (no Bulletin
+ # domination since each array element is scored independently and we take
+ # the max). filename_score = nativeRank(fileName) * textSim(fileName).
+ # queryCoverage — kills "single common token" filename matches like
+ # "sebi" leaking through.
+ # No global-phase: domain has no temporal bias we want to reward. All
+ # cross-time matches are equal.
+ rank-profile title_boosted_with_metadata inherits initial {
+   constants {
+     W_FN:    5.0
+     W_CH:    0.2
+     W_REF:   3.0
+     W_ENT:   1.0
+   }
+
+
+   function lexical_score() {
+     expression {
+       W_FN  * nativeRank(fileName)                 +
+       W_CH  * nativeRank(chunks)                   +
+       W_REF * elementSimilarity(referenced_ids)    +
+       W_ENT * elementSimilarity(entities_involved)
+     }
+   }
+
+
+   first-phase {
+     expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * lexical_score)
+   }
+
+
+   match-features {
+     vector_score
+     lexical_score
+     nativeRank(fileName)
+     nativeRank(chunks)
+     elementSimilarity(referenced_ids)
+     elementSimilarity(entities_involved)
+     bm25(referenced_ids)
+     bm25(entities_involved)
+     bm25(fileName)
+     bm25(chunks)
+     chunk_scores
+   }
+ }
+
+
+ rank-profile title_boosted_hybrid inherits initial {
+ first-phase {
+   expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
+ }
   global-phase {
-    expression {
-      (
-        (query(alpha) * vector_score) + 
-        ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
-      ) * doc_recency
-    }
-    rerank-count: 1000
-  }
+   expression {
+     (
+       (query(alpha) * vector_score) +
+       ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
+     ) * doc_recency
+   }
+   rerank-count: 1000
+ }
 }
 
-  rank-profile default_random inherits initial {
-    first-phase {
-        expression: random.match
-    }
-    match-features {
-      vector_score
-      combined_nativeRank
-      nativeRank(fileName)
-      nativeRank(chunks)
-      nativeRank(description)
-      chunk_scores
-      image_chunk_scores
-      doc_recency
-    }
-  }
 
-  document-summary default {
-    summary chunks_summary {
-      bolding: on
-      source: chunks
-    }
-    summary image_chunks_summary {
-      bolding: on
-      source: image_chunks
-    }
-    summary toc_chunks_summary {
-      bolding: on
-      source: toc_chunks
-    }
-    summary chunks_pos_summary {
-      source: chunks_pos
-    }
-    summary image_chunks_pos_summary {
-      source: image_chunks_pos
-    }
-    summary chunks_map {
-      source: chunks_map
-    }
-    summary image_chunks_map {
-      source: image_chunks_map
-    }
-  }
+ rank-profile default_random inherits initial {
+   first-phase {
+       expression: random.match
+   }
+   match-features {
+     vector_score
+     combined_nativeRank
+     nativeRank(fileName)
+     nativeRank(chunks)
+     nativeRank(description)
+     chunk_scores
+     image_chunk_scores
+     doc_recency
+   }
+ }
 
-  document-summary autocomplete {
-    summary fileName {
-        source: fileName
-    }
-    summary docId {
-        source: docId
-    }
-  }
 
-  # Autocomplete rank profile for fuzzy prefix search
-  rank-profile autocomplete {
-    first-phase {
-      expression: bm25(fileName_fuzzy)
-    }
-    match-features {
-      bm25(fileName_fuzzy)
-    }
-  }
+ document-summary default {
+   summary chunks_summary {
+     bolding: on
+     source: chunks
+   }
+   summary image_chunks_summary {
+     bolding: on
+     source: image_chunks
+   }
+   summary toc_chunks_summary {
+     bolding: on
+     source: toc_chunks
+   }
+   summary chunks_pos_summary {
+     source: chunks_pos
+   }
+   summary image_chunks_pos_summary {
+     source: image_chunks_pos
+   }
+   summary chunks_map {
+     source: chunks_map
+   }
+   summary image_chunks_map {
+     source: image_chunks_map
+   }
+ }
+
+
+ document-summary autocomplete {
+   summary fileName {
+       source: fileName
+   }
+   summary docId {
+       source: docId
+   }
+ }
+
+
+ # Autocomplete rank profile for fuzzy prefix search
+ rank-profile autocomplete {
+   first-phase {
+     expression: bm25(fileName_fuzzy)
+   }
+   match-features {
+     bm25(fileName_fuzzy)
+   }
+ }
 }
+
+
+

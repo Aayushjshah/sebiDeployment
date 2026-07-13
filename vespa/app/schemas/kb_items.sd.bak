@@ -1,56 +1,96 @@
-schema file {
+schema kb_items {
+
 
   struct chunk_meta {
     field chunk_index type int {}
     field page_numbers type array<int> {}
     field block_labels type array<string> {}
+    field bbox_l type double {}
+    field bbox_t type double {}
+    field bbox_r type double {}
+    field bbox_b type double {}
+    field bboxes_json type string {}
+    field width type int {}
+    field height type int {}
+    field headings type array<string> {}
   }
-  
-  document file {
+
+  document kb_items {
+
     field docId type string {
       indexing: attribute | summary
+      # Unique document identifier in Vespa
     }
+    
+    field clId type string {
+      indexing: attribute | summary
+      attribute: fast-search
+      # Knowledge base ID for folder-level queries
+    }
+    
+    field itemId type string {
+      indexing: attribute | summary
+      attribute: fast-search
+      # Database item ID linking to kb_items table
+    }
+    
+    field pageTitle type string {
+      indexing: summary
+    }
+
+    field clFd type string {
+      indexing: attribute | summary
+      attribute: fast-search
+      # Parent folder ID for hierarchical queries (clfd-xxx)
+    }
+    # knowledge-base
     field app type string {
       indexing: attribute | summary
       attribute: fast-search
       match: exact
     }
-    
+
+    field fileName type string {
+      indexing: attribute | summary | index
+      attribute: fast-search
+      index { enable-bm25 }
+    }
+
     field entity type string {
       indexing: attribute | summary
       attribute: fast-search
       match: exact
-    }
-    field title type string {
-      indexing: index | summary | attribute
-      index {
-        enable-bm25
-      }
-    }
-    field parentId type string {
-      indexing: index | summary | attribute
-      index {
-        enable-bm25
-      }
+      # Entity type: file or folder
     }
 
-    # TODO: low weightage url search can also be included
-    # maybe higher for subdomain and then lower for the path
-    # or we just make the path empty for those that are
-    # not good candidates like google drive
-    field url type string {
+    field description type string {
+      indexing: index | summary | attribute
+      index { enable-bm25 }
+    }
+    
+    field documentOutline type string {
       indexing: summary
     }
-
+    
+    field storagePath type string {
+      indexing: attribute | summary
+    }
+    
+    field toc_chunks type array<string> {
+      indexing: index | summary
+      index { enable-bm25 }
+    }
+    
     field chunks type array<string> {
       indexing: index | summary
-      index: enable-bm25
+      index { enable-bm25 }
     }
 
     field image_chunks type array<string> {
       indexing: index | summary
       index { enable-bm25 }
     }
+
 
     field chunks_pos type array<long> {
       indexing: attribute | summary
@@ -60,33 +100,51 @@ schema file {
       indexing: attribute | summary
     }
 
+
     field chunks_map type array<chunk_meta> {
       indexing: summary
       struct-field chunk_index { indexing: attribute | summary }
+      struct-field bbox_l { indexing: attribute | summary }
+      struct-field bbox_t { indexing: attribute | summary }
+      struct-field bbox_r { indexing: attribute | summary }
+      struct-field bbox_b { indexing: attribute | summary }
+      struct-field bboxes_json { indexing: summary }
+      struct-field width { indexing: attribute | summary }
+      struct-field height { indexing: attribute | summary }
     }
 
     field image_chunks_map type array<chunk_meta> {
       indexing: summary
       struct-field chunk_index { indexing: attribute | summary }
+      # Primitive fields can be attributes
+      struct-field bbox_l { indexing: attribute | summary }
+      struct-field bbox_t { indexing: attribute | summary }
+      struct-field bbox_r { indexing: attribute | summary }
+      struct-field bbox_b { indexing: attribute | summary }
+      struct-field bboxes_json { indexing: summary }
+      struct-field width { indexing: attribute | summary }
+      struct-field height { indexing: attribute | summary }
+      # Array fields are stored in summary only (not as attributes)
     }
-
-    field owner type string {
+    
+    field metadata type string {
       indexing: attribute | summary
     }
-
-    field ownerEmail type string {
+    
+    field createdBy type string {
       indexing: attribute | summary
+      attribute: fast-search
     }
 
-    field photoLink type string {
-      indexing: attribute | summary
-    }
-
-    field permissions type array<string> {
+    field duration type long {
       indexing: attribute | summary
     }
 
     field mimeType type string {
+      indexing: attribute | summary
+    }
+    
+    field fileSize type long {
       indexing: attribute | summary
     }
 
@@ -95,55 +153,33 @@ schema file {
       attribute: fast-search
     }
 
-
     field updatedAt type long {
       indexing: attribute | summary
       attribute: fast-search
     }
-
-    field metadata type string {
-      indexing: attribute | summary
-    }
-
-    # SHA256 of file content for attachment dedup (same file uploaded twice → same hash)
-    field fileHash type string {
-      indexing: attribute | summary
-    }
   }
 
-  field chunk_embeddings type tensor<bfloat16>(p{},v[1024])  {
+  # Vector embeddings
+  field chunk_embeddings type tensor<bfloat16>(p{},v[1024]) {
     indexing: input chunks | embed | attribute | index
-    attribute: paged
-    attribute {
-        distance-metric: angular
-    }
+    attribute { distance-metric: angular }
   }
 
   field image_chunk_embeddings type tensor<bfloat16>(p{},v[1024]) {
     indexing: input image_chunks | embed | attribute | index
-    attribute: paged
     attribute { distance-metric: angular }
   }
-  
 
-  field title_fuzzy type string {
-    indexing: input title | index
-    index {
-      enable-bm25
-    }
-    match {
-      gram
-      gram-size: 3
-    }
+  # Fuzzy fileName
+  field fileName_fuzzy type string {
+    indexing: input fileName | index
+    index { enable-bm25 }
+    match { gram gram-size: 3 }
   }
 
-  fieldset default {
-    fields: title,app,entity,chunks
-  }
-
-  fieldset autocomplete {
-    fields: title,app,entity
-  }
+  fieldset default      { fields:  description,toc_chunks,chunks,image_chunks,fileName,entity,createdBy,clFd }
+  fieldset autocomplete { fields:  fileName }
+  fieldset search       { fields:  description,toc_chunks,chunks,image_chunks,fileName,entity,clFd }
 
   rank-profile initial {
     # Inputs for the query vector and alpha for hybrid search
@@ -175,29 +211,43 @@ schema file {
     }
 
     function vector_score() {
-      expression: closeness(field,chunk_embeddings)
+      expression: closeness(field,chunk_embeddings) + closeness(field,image_chunk_embeddings)
     }
 
     function combined_bm25() {
-      expression: bm25(title) + bm25(chunks)
+      expression: bm25(fileName) + bm25(chunks) + bm25(image_chunks) + bm25(description)
     }
 
     function matchedFieldCount() {
       expression {
         # The `matches` returns 1 if the field contains a match,otherwise 0
-        matches(title) + matches(chunks)
+        matches(fileName) + matches(chunks) + matches(image_chunks) + matches(description)
       }
     }
 
     function combined_nativeRank() {
-      expression: (nativeRank(title) + nativeRank(chunks)) / if(matchedFieldCount == 0,1,matchedFieldCount)
+      expression: (nativeRank(fileName) + nativeProximity(chunks) + nativeRank(chunks) + nativeRank(image_chunks) + nativeRank(description)) / if(matchedFieldCount == 0,1,matchedFieldCount)
     }
-
+    rank-properties {
+        # Keeps early match for fileName,but kills it for the long text fields
+        nativeFieldMatch.firstOccurrenceTable.chunks: "linear(0,0)"
+        nativeFieldMatch.firstOccurrenceTable.image_chunks: "linear(0,0)"
+        nativeFieldMatch.firstOccurrenceTable.description: "linear(0,0)"
+    }
+    rank-properties {
+        nativeFieldMatch.occurrenceCountTable.chunks: "linear(0,1)"
+        nativeFieldMatch.occurrenceCountTable.image_chunks: "linear(0,1)"
+        nativeFieldMatch.occurrenceCountTable.description: "linear(0,1)"
+    }
     function chunk_scores() {
       expression: elementwise(bm25(chunks),x,double)
     }
+
+    function image_chunk_scores() {
+      expression: elementwise(bm25(image_chunks),x,double)
+    }
   }
- 
+
   rank-profile default_native inherits initial {
 
     first-phase {
@@ -218,58 +268,9 @@ schema file {
       matchedFieldCount
       vector_score
       combined_nativeRank
-      nativeRank(title)
+      nativeRank(fileName)
       nativeRank(chunks)
-      chunk_scores
-      doc_recency
-    }
-  }
-
-  rank-profile attachmentRank inherits initial {
-
-    function vector_score_image() {
-      expression: vector_score() + closeness(field,image_chunk_embeddings)
-    }
-
-    function combined_bm25_image() {
-      expression: combined_bm25() + bm25(image_chunks)
-    }
-
-    function matchedFieldCount_image() {
-      expression {
-        # The `matches` returns 1 if the field contains a match,otherwise 0
-        matchedFieldCount() + matches(image_chunks)
-      }
-    }
-
-    function combined_nativeRank_image() {
-      expression: (nativeRank(title) + nativeRank(chunks) + nativeRank(image_chunks)) / if(matchedFieldCount_image == 0,1,matchedFieldCount_image)
-    }
-
-    function image_chunk_scores() {
-      expression: elementwise(bm25(image_chunks),x,double)
-    }
-
-    first-phase {
-      expression: (query(alpha) * (vector_score_image)) + ((1 - query(alpha)) *  combined_nativeRank_image)
-    }
-
-    global-phase {
-      expression {
-        (
-          (query(alpha) * vector_score_image) + 
-          ((1 - query(alpha)) *  combined_nativeRank_image)
-        ) * doc_recency
-      }
-      rerank-count: 1000
-    }
-
-    match-features {
-      matchedFieldCount_image
-      vector_score_image
-      combined_nativeRank_image
-      nativeRank(title)
-      nativeRank(chunks)
+      nativeRank(description)
       chunk_scores
       image_chunk_scores
       doc_recency
@@ -337,9 +338,11 @@ schema file {
       vector_score
       matchedFieldCount
       combined_nativeRank        
-      nativeRank(title)
+      nativeRank(fileName)
       nativeRank(chunks)
+      nativeRank(description)
       chunk_scores
+      image_chunk_scores
       document_age_days_gs
       query(bin_size_days_gs)  
       recency_bin_index_gs
@@ -373,9 +376,11 @@ schema file {
      match-features {
       vector_score
       bm25(chunks)
-      bm25(title)
+      bm25(fileName)
+      bm25(description)
       scale(combined_bm25)
       chunk_scores
+      image_chunk_scores
     }
   }
 
@@ -399,12 +404,30 @@ schema file {
     match-features {
       vector_score
       combined_nativeRank
-      nativeRank(title)
+      nativeRank(fileName)
       nativeRank(chunks)
+      nativeRank(description)
       chunk_scores
+      image_chunk_scores
       doc_recency
     }
   }
+
+  rank-profile title_boosted_hybrid inherits initial {
+  first-phase {
+    expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
+  }
+  
+  global-phase {
+    expression {
+      (
+        (query(alpha) * vector_score) + 
+        ((1 - query(alpha)) * (5 * nativeRank(fileName)+0.2*nativeRank(chunks)))
+      ) * doc_recency
+    }
+    rerank-count: 1000
+  }
+}
 
   rank-profile default_random inherits initial {
     first-phase {
@@ -413,28 +436,15 @@ schema file {
     match-features {
       vector_score
       combined_nativeRank
-      nativeRank(title)
+      nativeRank(fileName)
       nativeRank(chunks)
+      nativeRank(description)
       chunk_scores
+      image_chunk_scores
       doc_recency
     }
   }
 
-  rank-profile title_boosted_hybrid inherits initial {
-  first-phase {
-    expression: (query(alpha) * vector_score) + ((1 - query(alpha)) * (5 * nativeRank(title)+0.2*nativeRank(chunks)))
-  }
-  
-  global-phase {
-    expression {
-      (
-        (query(alpha) * vector_score) + 
-        ((1 - query(alpha)) * (5 * nativeRank(title)+0.2*nativeRank(chunks)))
-      ) * doc_recency
-    }
-    rerank-count: 1000
-  }
-}
   document-summary default {
     summary chunks_summary {
       bolding: on
@@ -444,23 +454,27 @@ schema file {
       bolding: on
       source: image_chunks
     }
+    summary toc_chunks_summary {
+      bolding: on
+      source: toc_chunks
+    }
     summary chunks_pos_summary {
       source: chunks_pos
     }
     summary image_chunks_pos_summary {
       source: image_chunks_pos
     }
+    summary chunks_map {
+      source: chunks_map
+    }
+    summary image_chunks_map {
+      source: image_chunks_map
+    }
   }
 
   document-summary autocomplete {
-    summary title {
-        source: title
-    }
-    summary app {
-        source: app
-    }
-    summary entity {
-        source: entity
+    summary fileName {
+        source: fileName
     }
     summary docId {
         source: docId
@@ -470,10 +484,10 @@ schema file {
   # Autocomplete rank profile for fuzzy prefix search
   rank-profile autocomplete {
     first-phase {
-      expression: bm25(title_fuzzy)
+      expression: bm25(fileName_fuzzy)
     }
     match-features {
-      bm25(title_fuzzy)
+      bm25(fileName_fuzzy)
     }
   }
 }
