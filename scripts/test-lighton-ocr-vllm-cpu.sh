@@ -39,15 +39,18 @@ image.save(out)
 print(out)
 PY
 
-IMAGE_B64="$(base64 -w0 "${TMP_DIR}/page.png")"
 PAYLOAD="${TMP_DIR}/request.json"
 RESPONSE="${TMP_DIR}/response.json"
 
-python3 - "${PAYLOAD}" "${MODEL}" "${IMAGE_B64}" "${MAX_TOKENS}" <<'PY'
+python3 - "${PAYLOAD}" "${MODEL}" "${TMP_DIR}/page.png" "${MAX_TOKENS}" <<'PY'
+import base64
 import json
 import sys
 
-out, model, image_b64, max_tokens = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+out, model, image_path, max_tokens = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+with open(image_path, "rb") as f:
+    image_b64 = base64.b64encode(f.read()).decode("ascii")
+
 payload = {
     "model": model,
     "messages": [{
