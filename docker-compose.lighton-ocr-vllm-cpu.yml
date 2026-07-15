@@ -14,7 +14,7 @@ services:
       - MAX_MODEL_LEN=${LIGHTON_OCR_MAX_MODEL_LEN:-8192}
       - MAX_NUM_SEQS=${LIGHTON_OCR_MAX_NUM_SEQS:-1}
       - MAX_NUM_BATCHED_TOKENS=${LIGHTON_OCR_MAX_BATCHED_TOKENS:-8192}
-      - LIMIT_MM_PER_PROMPT={"image":1}
+      - 'LIMIT_MM_PER_PROMPT={"image":1}'
       - TRANSFORMERS_OFFLINE=1
       - HF_HUB_OFFLINE=1
       - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,lighton-ocr-vllm-cpu}
