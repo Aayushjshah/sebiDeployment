@@ -23,6 +23,7 @@ Environment:
   REQUEST_TIMEOUT_SECONDS   default: 120
   STATS_INTERVAL_SECONDS    default: 1
   PROGRESS_EVERY            default: 10
+  USE_PROXY                 default: false; set true only for remote endpoints
 
 Examples:
   REQUESTS=100 CONCURRENCY=4 BATCH_SIZE=1 scripts/benchmark-e5-cpu-stats.sh
@@ -47,6 +48,7 @@ TOKENS_PER_CHUNK="${TOKENS_PER_CHUNK:-460}"
 REQUEST_TIMEOUT_SECONDS="${REQUEST_TIMEOUT_SECONDS:-120}"
 STATS_INTERVAL_SECONDS="${STATS_INTERVAL_SECONDS:-1}"
 PROGRESS_EVERY="${PROGRESS_EVERY:-10}"
+USE_PROXY="${USE_PROXY:-false}"
 OUTPUT_DIR="${1:-/tmp/e5-bench-$(date +%Y%m%d-%H%M%S)}"
 
 command -v docker >/dev/null 2>&1 || { echo "docker is required" >&2; exit 1; }
@@ -106,6 +108,7 @@ INPUT_DIR="${INPUT_DIR:-}" \
 REQUEST_TIMEOUT_SECONDS="${REQUEST_TIMEOUT_SECONDS}" \
 PROGRESS_EVERY="${PROGRESS_EVERY}" \
 LATENCY_CSV="${LATENCY_CSV}" \
+USE_PROXY="${USE_PROXY}" \
 python3 - <<'PY'
 import concurrent.futures
 import csv
@@ -129,6 +132,8 @@ progress_every = int(os.environ["PROGRESS_EVERY"])
 latency_csv = pathlib.Path(os.environ["LATENCY_CSV"])
 input_file = os.environ.get("INPUT_FILE") or ""
 input_dir = os.environ.get("INPUT_DIR") or ""
+use_proxy = os.environ.get("USE_PROXY", "false").lower() in {"1", "true", "yes"}
+opener = urllib.request.build_opener() if use_proxy else urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def generated_chunk(i: int) -> str:
@@ -201,7 +206,7 @@ def run_one(request_id: int) -> dict:
     dim = 0
     error = ""
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             status = resp.status
             payload = json.loads(resp.read().decode("utf-8"))
         data = payload.get("data") or []
