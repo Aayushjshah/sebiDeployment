@@ -114,7 +114,8 @@ http_code="$(
       -H "Authorization: Bearer ${TOKEN}" \
       -d "@${PAYLOAD}" \
       -o "${RESPONSE}" \
-      -w "%{http_code}"
+      -w "%{http_code}" \
+      "${ENDPOINT}"
 )"
 
 echo "http_status=${http_code}"
