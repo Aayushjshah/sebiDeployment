@@ -1,0 +1,31 @@
+services:
+  e5-tei-cpu:
+    image: ${E5_TEI_CPU_IMAGE:-e5-tei-cpu:sebi-20260714}
+    container_name: e5-tei-cpu
+    ports:
+      - "${E5_TEI_CPU_PORT:-8093}:80"
+    environment:
+      - MODEL_PATH=/models/multilingual-e5-large-instruct
+      - SERVED_MODEL_NAME=${E5_EMBEDDING_MODEL:-intfloat/multilingual-e5-large-instruct}
+      - TEI_DTYPE=${E5_TEI_DTYPE:-float32}
+      - TEI_POOLING=${E5_TEI_POOLING:-mean}
+      - TEI_MAX_CONCURRENT_REQUESTS=${E5_TEI_MAX_CONCURRENT_REQUESTS:-64}
+      - TEI_MAX_BATCH_TOKENS=${E5_TEI_MAX_BATCH_TOKENS:-8192}
+      - TEI_MAX_BATCH_REQUESTS=${E5_TEI_MAX_BATCH_REQUESTS:-4}
+      - TEI_MAX_CLIENT_BATCH_SIZE=${E5_TEI_MAX_CLIENT_BATCH_SIZE:-64}
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,e5-tei-cpu,tei-batch-proxy,sebi-tei-batch-proxy}
+      - no_proxy=${no_proxy:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,e5-tei-cpu,tei-batch-proxy,sebi-tei-batch-proxy}
+    networks:
+      - xyne
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "6"
+
+networks:
+  xyne:
+    external: true

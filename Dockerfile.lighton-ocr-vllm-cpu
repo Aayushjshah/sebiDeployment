@@ -1,0 +1,47 @@
+ARG VLLM_CPU_BASE_IMAGE=vllm/vllm-openai-cpu:latest-x86_64
+ARG MODEL_ID=lightonai/LightOnOCR-2-1B-bbox
+
+FROM python:3.12-slim AS model-cache
+
+ARG MODEL_ID
+ENV MODEL_ID="${MODEL_ID}"
+ENV HF_XET_HIGH_PERFORMANCE=1
+
+RUN pip install --no-cache-dir --upgrade \
+      huggingface_hub
+
+RUN --mount=type=cache,target=/root/.cache/huggingface \
+    python -c 'import os; from huggingface_hub import snapshot_download; snapshot_download(repo_id=os.environ["MODEL_ID"], local_dir="/opt/lighton-ocr-model", local_dir_use_symlinks=False)'
+
+FROM ${VLLM_CPU_BASE_IMAGE}
+
+ARG MODEL_ID
+
+LABEL org.opencontainers.image.title="SEBI LightOnOCR vLLM CPU"
+LABEL org.opencontainers.image.description="Air-gapped CPU vLLM OpenAI-compatible server image with LightOnOCR model baked in"
+LABEL org.opencontainers.image.source="sebiDeployment"
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_PATH="/models/lighton-ocr"
+ENV SERVED_MODEL_NAME="${MODEL_ID}"
+ENV VLLM_HOST="0.0.0.0"
+ENV VLLM_PORT="8000"
+ENV VLLM_DTYPE="bfloat16"
+ENV VLLM_CPU_KVCACHE_SPACE="16"
+ENV VLLM_CPU_NUM_OF_RESERVED_CPU="2"
+ENV VLLM_CPU_OMP_THREADS_BIND="auto"
+ENV HF_HOME="/models/.hf"
+ENV TRANSFORMERS_OFFLINE="1"
+ENV HF_HUB_OFFLINE="1"
+
+COPY --from=model-cache /opt/lighton-ocr-model /models/lighton-ocr
+COPY scripts/lighton-ocr-vllm-cpu-entrypoint.sh /usr/local/bin/lighton-ocr-vllm-cpu-entrypoint.sh
+
+RUN chmod 0755 /usr/local/bin/lighton-ocr-vllm-cpu-entrypoint.sh
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/lighton-ocr-vllm-cpu-entrypoint.sh"]

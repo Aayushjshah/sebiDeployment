@@ -1,4 +1,9 @@
 *
 !Dockerfile.xyne-sebi-ca
+!Dockerfile.e5-tei-cpu
+!Dockerfile.lighton-ocr-vllm-cpu
 !certs/
 !certs/socnoc.crt
+!scripts/
+!scripts/e5-tei-cpu-entrypoint.sh
+!scripts/lighton-ocr-vllm-cpu-entrypoint.sh

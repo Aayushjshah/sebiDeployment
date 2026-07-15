@@ -1,0 +1,74 @@
+# syntax=docker/dockerfile:1.7
+
+ARG TEI_CPU_BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+ARG MODEL_ID=intfloat/multilingual-e5-large-instruct
+
+FROM --platform=$BUILDPLATFORM python:3.12-slim AS model-cache
+
+ARG MODEL_ID
+ARG HF_TOKEN
+ENV HF_XET_HIGH_PERFORMANCE=1
+
+RUN pip install --no-cache-dir --upgrade \
+      "huggingface_hub[hf_xet]"
+
+RUN --mount=type=cache,target=/root/.cache/huggingface \
+    if [ -n "${HF_TOKEN:-}" ]; then \
+      hf download "${MODEL_ID}" \
+        --token "${HF_TOKEN}" \
+        --include "1_Pooling/config.json" \
+        --include "config.json" \
+        --include "config_sentence_transformers.json" \
+        --include "model.safetensors" \
+        --include "modules.json" \
+        --include "sentence_xlm-roberta_config.json" \
+        --include "sentencepiece.bpe.model" \
+        --include "special_tokens_map.json" \
+        --include "tokenizer.json" \
+        --include "tokenizer_config.json" \
+        --local-dir /opt/e5-model; \
+    else \
+      hf download "${MODEL_ID}" \
+        --include "1_Pooling/config.json" \
+        --include "config.json" \
+        --include "config_sentence_transformers.json" \
+        --include "model.safetensors" \
+        --include "modules.json" \
+        --include "sentence_xlm-roberta_config.json" \
+        --include "sentencepiece.bpe.model" \
+        --include "special_tokens_map.json" \
+        --include "tokenizer.json" \
+        --include "tokenizer_config.json" \
+        --local-dir /opt/e5-model; \
+    fi
+
+FROM ${TEI_CPU_BASE_IMAGE}
+
+ARG MODEL_ID
+
+LABEL org.opencontainers.image.title="SEBI multilingual E5 TEI CPU"
+LABEL org.opencontainers.image.description="Air-gapped CPU Text Embeddings Inference image with intfloat/multilingual-e5-large-instruct baked in"
+LABEL org.opencontainers.image.source="sebiDeployment"
+
+ENV MODEL_ID="${MODEL_ID}"
+ENV MODEL_PATH="/models/multilingual-e5-large-instruct"
+ENV SERVED_MODEL_NAME="${MODEL_ID}"
+ENV PORT="80"
+ENV TEI_DTYPE="float32"
+ENV TEI_POOLING="mean"
+ENV TEI_MAX_CONCURRENT_REQUESTS="64"
+ENV TEI_MAX_BATCH_TOKENS="8192"
+ENV TEI_MAX_BATCH_REQUESTS="4"
+ENV TEI_MAX_CLIENT_BATCH_SIZE="64"
+ENV HF_HOME="/models/.hf"
+ENV TRANSFORMERS_OFFLINE="1"
+ENV HF_HUB_OFFLINE="1"
+
+COPY --from=model-cache /opt/e5-model /models/multilingual-e5-large-instruct
+COPY scripts/e5-tei-cpu-entrypoint.sh /usr/local/bin/e5-tei-cpu-entrypoint.sh
+
+RUN chmod 0755 /usr/local/bin/e5-tei-cpu-entrypoint.sh
+
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/e5-tei-cpu-entrypoint.sh"]
