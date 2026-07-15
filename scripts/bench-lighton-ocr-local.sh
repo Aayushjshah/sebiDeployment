@@ -144,6 +144,7 @@ run_request() {
   local meta="${TMP_DIR}/${phase}_${idx}.meta"
   local started ended curl_exit curl_output http_code time_total size_download
 
+  echo "request_start phase=${phase} index=${idx} ts=$(date -Is)" >&2
   started="$(date +%s)"
   set +e
   curl_output="$(
@@ -162,6 +163,7 @@ run_request() {
 
   IFS=',' read -r http_code time_total size_download <<< "${curl_output:-000,0,0}"
   echo "${phase},${idx},${http_code:-000},${time_total:-0},${size_download:-0},${curl_exit},${started},${ended},${response},${error_log}" > "${meta}"
+  echo "request_done phase=${phase} index=${idx} http=${http_code:-000} curl_exit=${curl_exit} time_total_sec=${time_total:-0} ts=$(date -Is)" >&2
 }
 
 run_phase() {
