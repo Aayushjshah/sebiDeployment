@@ -4,6 +4,8 @@ services:
     container_name: lighton-ocr-vllm-cpu
     ports:
       - "${LIGHTON_OCR_VLLM_CPU_PORT:-8003}:8000"
+    volumes:
+      - ./scripts/lighton-ocr-vllm-cpu-entrypoint.sh:/usr/local/bin/lighton-ocr-vllm-cpu-entrypoint.sh:ro
     environment:
       MODEL_PATH: /models/lighton-ocr
       SERVED_MODEL_NAME: ${LIGHTON_OCR_MODEL:-lightonai/LightOnOCR-2-1B-bbox}
