@@ -172,17 +172,24 @@ run_phase() {
   local concurrency="$3"
   local active=0
   local i
+  local pid
+  local pids=()
 
   [ "${total}" -le 0 ] && return 0
   for i in $(seq 1 "${total}"); do
     run_request "${phase}" "${i}" &
+    pids+=("$!")
     active=$((active + 1))
     if [ "${active}" -ge "${concurrency}" ]; then
-      wait -n || true
+      pid="${pids[0]}"
+      wait "${pid}" || true
+      pids=("${pids[@]:1}")
       active=$((active - 1))
     fi
   done
-  wait || true
+  for pid in "${pids[@]}"; do
+    wait "${pid}" || true
+  done
 }
 
 write_summary() {
