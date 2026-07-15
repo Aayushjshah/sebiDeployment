@@ -1,0 +1,6 @@
+services:
+  lighton-ocr-vllm-cpu:
+    cpuset: "${LIGHTON_OCR_VLLM_CPUSET:-0-31}"
+    cpus: "${LIGHTON_OCR_VLLM_CPUS:-32}"
+    environment:
+      VLLM_CPU_OMP_THREADS_BIND: "${LIGHTON_OCR_VLLM_CPUSET:-0-31}"

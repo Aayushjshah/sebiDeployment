@@ -64,6 +64,7 @@ restore_limits() {
 trap restore_limits EXIT
 
 echo "original_cpu_limits container=${CONTAINER} cpuset=${orig_cpuset:-<none>} nanocpus=${orig_nanocpus}"
+echo "warning: this script limits an already-running container. For vLLM CPU, prefer scripts/recreate-lighton-ocr-vllm-cpu-limited.sh so thread pools are initialized with the intended CPU set." >&2
 echo "applying_cpu_limits container=${CONTAINER} cpuset=${CPUSET} cpus=${CPUS}"
 docker update --cpuset-cpus "${CPUSET}" --cpus "${CPUS}" "${CONTAINER}" >/dev/null
 
