@@ -5,20 +5,20 @@ services:
     ports:
       - "${LIGHTON_OCR_VLLM_CPU_PORT:-8003}:8000"
     environment:
-      - MODEL_PATH=/models/lighton-ocr
-      - SERVED_MODEL_NAME=${LIGHTON_OCR_MODEL:-lightonai/LightOnOCR-2-1B-bbox}
-      - VLLM_DTYPE=${LIGHTON_OCR_VLLM_DTYPE:-bfloat16}
-      - VLLM_CPU_KVCACHE_SPACE=${LIGHTON_OCR_VLLM_CPU_KVCACHE_SPACE:-16}
-      - VLLM_CPU_NUM_OF_RESERVED_CPU=${LIGHTON_OCR_VLLM_CPU_RESERVED_CPU:-2}
-      - VLLM_CPU_OMP_THREADS_BIND=${LIGHTON_OCR_VLLM_CPU_THREADS_BIND:-auto}
-      - MAX_MODEL_LEN=${LIGHTON_OCR_MAX_MODEL_LEN:-8192}
-      - MAX_NUM_SEQS=${LIGHTON_OCR_MAX_NUM_SEQS:-1}
-      - MAX_NUM_BATCHED_TOKENS=${LIGHTON_OCR_MAX_BATCHED_TOKENS:-8192}
-      - 'LIMIT_MM_PER_PROMPT={"image":1}'
-      - TRANSFORMERS_OFFLINE=1
-      - HF_HUB_OFFLINE=1
-      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,lighton-ocr-vllm-cpu}
-      - no_proxy=${no_proxy:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,lighton-ocr-vllm-cpu}
+      MODEL_PATH: /models/lighton-ocr
+      SERVED_MODEL_NAME: ${LIGHTON_OCR_MODEL:-lightonai/LightOnOCR-2-1B-bbox}
+      VLLM_DTYPE: ${LIGHTON_OCR_VLLM_DTYPE:-bfloat16}
+      VLLM_CPU_KVCACHE_SPACE: ${LIGHTON_OCR_VLLM_CPU_KVCACHE_SPACE:-16}
+      VLLM_CPU_NUM_OF_RESERVED_CPU: ${LIGHTON_OCR_VLLM_CPU_RESERVED_CPU:-2}
+      VLLM_CPU_OMP_THREADS_BIND: ${LIGHTON_OCR_VLLM_CPU_THREADS_BIND:-auto}
+      MAX_MODEL_LEN: ${LIGHTON_OCR_MAX_MODEL_LEN:-8192}
+      MAX_NUM_SEQS: ${LIGHTON_OCR_MAX_NUM_SEQS:-1}
+      MAX_NUM_BATCHED_TOKENS: ${LIGHTON_OCR_MAX_BATCHED_TOKENS:-8192}
+      LIMIT_MM_PER_PROMPT: '{"image":1}'
+      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_OFFLINE: "1"
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,lighton-ocr-vllm-cpu}
+      no_proxy: ${no_proxy:-localhost,127.0.0.1,xyne-db,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,xyne-prometheus,xyne-grafana,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local,lighton-ocr-vllm-cpu}
     shm_size: "8g"
     cap_add:
       - SYS_NICE
