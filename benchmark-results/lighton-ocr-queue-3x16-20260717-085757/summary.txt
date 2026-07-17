@@ -1,0 +1,33 @@
+LightOnOCR dynamic-queue benchmark summary
+
+queued_files=15
+successful_files=15
+failed_files=0
+queue_wall_sec=1439
+throughput_pages_per_min=0.625
+latency_avg_sec=272.740
+latency_p50_sec=288.187
+latency_p95_sec=297.717
+latency_max_sec=297.780
+
+worker=1
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=287.175
+  busy_time_sec=1435.877
+
+worker=2
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=287.719
+  busy_time_sec=1438.597
+
+worker=3
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=243.324
+  busy_time_sec=1216.621
+
+host_mem_available_min_gib=48.03
+host_load1_max=51.95
+new_oom_lines=0

@@ -1,0 +1,88 @@
+output_dir=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-3x16-20260717-082153
+image=lighton-ocr-vllm-cpu:sebi-20260714
+instance_counts=3
+cores_per_instance=16
+
+=== experiment instance_count=3 cores_each=16 ===
+starting name=lighton-ocr-vllm-cpu-exp-1 port=8011 cpuset=0-15
+starting name=lighton-ocr-vllm-cpu-exp-2 port=8012 cpuset=16-31
+starting name=lighton-ocr-vllm-cpu-exp-3 port=8013 cpuset=32-47
+waiting_for_health name=lighton-ocr-vllm-cpu-exp-1 url=http://localhost:8011/health
+waiting_for_health name=lighton-ocr-vllm-cpu-exp-2 url=http://localhost:8012/health
+waiting_for_health name=lighton-ocr-vllm-cpu-exp-3 url=http://localhost:8013/health
+warmup_rounds=1
+request_start phase=warmup instances=3 round=1 instance=1 port=8011 ts=2026-07-17T08:25:50-04:00
+request_start phase=warmup instances=3 round=1 instance=2 port=8012 ts=2026-07-17T08:25:50-04:00
+request_start phase=warmup instances=3 round=1 instance=3 port=8013 ts=2026-07-17T08:25:50-04:00
+request_done phase=warmup instances=3 round=1 instance=3 http=200 curl_exit=0 time_total_sec=264.184800 ts=2026-07-17T08:30:15-04:00
+request_done phase=warmup instances=3 round=1 instance=1 http=200 curl_exit=0 time_total_sec=304.776528 ts=2026-07-17T08:30:55-04:00
+request_done phase=warmup instances=3 round=1 instance=2 http=200 curl_exit=0 time_total_sec=304.785128 ts=2026-07-17T08:30:55-04:00
+measured_rounds=5
+request_start phase=measured instances=3 round=1 instance=1 port=8011 ts=2026-07-17T08:30:55-04:00
+request_start phase=measured instances=3 round=1 instance=2 port=8012 ts=2026-07-17T08:30:55-04:00
+request_start phase=measured instances=3 round=1 instance=3 port=8013 ts=2026-07-17T08:30:55-04:00
+request_done phase=measured instances=3 round=1 instance=3 http=200 curl_exit=0 time_total_sec=251.991640 ts=2026-07-17T08:35:07-04:00
+request_done phase=measured instances=3 round=1 instance=1 http=200 curl_exit=0 time_total_sec=297.116784 ts=2026-07-17T08:35:52-04:00
+request_done phase=measured instances=3 round=1 instance=2 http=200 curl_exit=0 time_total_sec=300.228113 ts=2026-07-17T08:35:55-04:00
+request_start phase=measured instances=3 round=2 instance=2 port=8012 ts=2026-07-17T08:35:55-04:00
+request_start phase=measured instances=3 round=2 instance=3 port=8013 ts=2026-07-17T08:35:55-04:00
+request_start phase=measured instances=3 round=2 instance=1 port=8011 ts=2026-07-17T08:35:55-04:00
+request_done phase=measured instances=3 round=2 instance=3 http=200 curl_exit=0 time_total_sec=251.486192 ts=2026-07-17T08:40:07-04:00
+request_done phase=measured instances=3 round=2 instance=1 http=200 curl_exit=0 time_total_sec=293.532107 ts=2026-07-17T08:40:49-04:00
+request_done phase=measured instances=3 round=2 instance=2 http=200 curl_exit=0 time_total_sec=298.036015 ts=2026-07-17T08:40:53-04:00
+request_start phase=measured instances=3 round=3 instance=1 port=8011 ts=2026-07-17T08:40:54-04:00
+request_start phase=measured instances=3 round=3 instance=2 port=8012 ts=2026-07-17T08:40:54-04:00
+request_start phase=measured instances=3 round=3 instance=3 port=8013 ts=2026-07-17T08:40:54-04:00
+request_done phase=measured instances=3 round=3 instance=3 http=200 curl_exit=0 time_total_sec=254.026368 ts=2026-07-17T08:45:08-04:00
+request_done phase=measured instances=3 round=3 instance=1 http=200 curl_exit=0 time_total_sec=292.616476 ts=2026-07-17T08:45:46-04:00
+request_done phase=measured instances=3 round=3 instance=2 http=200 curl_exit=0 time_total_sec=298.173459 ts=2026-07-17T08:45:52-04:00
+request_start phase=measured instances=3 round=4 instance=1 port=8011 ts=2026-07-17T08:45:52-04:00
+request_start phase=measured instances=3 round=4 instance=2 port=8012 ts=2026-07-17T08:45:52-04:00
+request_start phase=measured instances=3 round=4 instance=3 port=8013 ts=2026-07-17T08:45:52-04:00
+request_done phase=measured instances=3 round=4 instance=3 http=200 curl_exit=0 time_total_sec=251.453325 ts=2026-07-17T08:50:03-04:00
+request_done phase=measured instances=3 round=4 instance=1 http=200 curl_exit=0 time_total_sec=296.150146 ts=2026-07-17T08:50:48-04:00
+request_done phase=measured instances=3 round=4 instance=2 http=200 curl_exit=0 time_total_sec=298.818780 ts=2026-07-17T08:50:51-04:00
+request_start phase=measured instances=3 round=5 instance=2 port=8012 ts=2026-07-17T08:50:51-04:00
+request_start phase=measured instances=3 round=5 instance=1 port=8011 ts=2026-07-17T08:50:51-04:00
+request_start phase=measured instances=3 round=5 instance=3 port=8013 ts=2026-07-17T08:50:51-04:00
+request_done phase=measured instances=3 round=5 instance=3 http=200 curl_exit=0 time_total_sec=252.365290 ts=2026-07-17T08:55:03-04:00
+request_done phase=measured instances=3 round=5 instance=2 http=000 curl_exit=52 time_total_sec=298.668068 ts=2026-07-17T08:55:49-04:00
+request_done phase=measured instances=3 round=5 instance=1 http=000 curl_exit=52 time_total_sec=298.678760 ts=2026-07-17T08:55:49-04:00
+LightOnOCR multi-instance benchmark summary
+
+instance_count=3
+  measured_requests=15
+  successful_requests=13
+  failed_requests=2
+  measured_wall_sec=1494
+  throughput_pages_per_min=0.522
+  latency_avg_sec=279.692
+  latency_p50_sec=293.532
+  latency_p95_sec=299.383
+  latency_max_sec=300.228
+
+host_mem_available_start=49.23 GiB
+host_mem_available_min=48.05 GiB
+host_mem_available_end=111.65 GiB
+host_load1_max=53.27
+
+container=n3/lighton-ocr-vllm-cpu-exp-1
+  cpu_max_pct=1605.02
+  mem_max_pct=9.29
+  mem_max=23.32 GiB
+container=n3/lighton-ocr-vllm-cpu-exp-2
+  cpu_max_pct=1607.90
+  mem_max_pct=9.27
+  mem_max=23.29 GiB
+container=n3/lighton-ocr-vllm-cpu-exp-3
+  cpu_max_pct=1599.72
+  mem_max_pct=8.80
+  mem_max=22.09 GiB
+
+new_oom_lines=0
+
+Artifacts:
+  /root/Documents/sebiDeployment/benchmark-results/lighton-ocr-3x16-20260717-082153/summary.txt
+  /root/Documents/sebiDeployment/benchmark-results/lighton-ocr-3x16-20260717-082153/requests.csv
+  /root/Documents/sebiDeployment/benchmark-results/lighton-ocr-3x16-20260717-082153/host_metrics.csv
+  /root/Documents/sebiDeployment/benchmark-results/lighton-ocr-3x16-20260717-082153/docker_stats.jsonl

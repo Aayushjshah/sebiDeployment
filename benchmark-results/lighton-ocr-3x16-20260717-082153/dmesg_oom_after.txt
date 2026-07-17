@@ -1,0 +1,34 @@
+[Tue May 19 11:08:27 2026] kube-scheduler invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=-997
+[Tue May 19 11:08:27 2026]  oom_kill_process+0xff/0x1c0
+[Tue May 19 11:08:27 2026] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[Tue May 19 11:08:27 2026] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=cri-containerd-41d8120a6b632b2df0e50881d97b0759208c4cd6a72dad7b6edf4f347397e24f.scope,mems_allowed=0,global_oom,task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod666662ed_8a09_48b3_a6b2_06778acdce92.slice/cri-containerd-eb2997ed7cd701fe61da9c403b01837517917ea1cfcf5c1aa93bbbd2a5fa8406.scope,task=coredns,pid=10021,uid=65532
+[Tue May 19 11:08:27 2026] Out of memory: Killed process 10021 (coredns) total-vm:772676kB, anon-rss:25956kB, file-rss:2048kB, shmem-rss:0kB, UID:65532 pgtables:240kB oom_score_adj:999
+[Tue May 19 11:08:27 2026] Tasks in /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod666662ed_8a09_48b3_a6b2_06778acdce92.slice/cri-containerd-eb2997ed7cd701fe61da9c403b01837517917ea1cfcf5c1aa93bbbd2a5fa8406.scope are going to be killed due to memory.oom.group set
+[Tue May 19 11:08:27 2026] Out of memory: Killed process 10021 (coredns) total-vm:772676kB, anon-rss:25956kB, file-rss:2048kB, shmem-rss:0kB, UID:65532 pgtables:240kB oom_score_adj:999
+[Tue May 19 11:08:27 2026] Worker invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=0
+[Tue May 19 11:08:27 2026]  oom_kill_process+0xff/0x1c0
+[Tue May 19 11:08:27 2026] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[Tue May 19 11:08:27 2026] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=docker-dc8546c5a447b2deba290ecc7df6c555f92af56092ee308316736a3ec941ed5f.scope,mems_allowed=0,global_oom,task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod39ab85d4_b252_4bb9_ac29_9e2d3678d00f.slice/cri-containerd-6f745ec45aaf0832aa935334103b0bcd8d250d7cc9c17d86bb2222f2741293bc.scope,task=coredns,pid=10182,uid=65532
+[Tue May 19 11:08:27 2026] Out of memory: Killed process 10182 (coredns) total-vm:772164kB, anon-rss:22508kB, file-rss:1024kB, shmem-rss:0kB, UID:65532 pgtables:236kB oom_score_adj:999
+[Tue May 19 11:08:27 2026] Tasks in /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod39ab85d4_b252_4bb9_ac29_9e2d3678d00f.slice/cri-containerd-6f745ec45aaf0832aa935334103b0bcd8d250d7cc9c17d86bb2222f2741293bc.scope are going to be killed due to memory.oom.group set
+[Tue May 19 11:08:27 2026] Out of memory: Killed process 10196 (coredns) total-vm:772164kB, anon-rss:22508kB, file-rss:1024kB, shmem-rss:0kB, UID:65532 pgtables:236kB oom_score_adj:999
+[Tue May 19 11:10:55 2026] kube-scheduler invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=-997
+[Tue May 19 11:10:55 2026]  oom_kill_process+0xff/0x1c0
+[Tue May 19 11:10:55 2026] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[Tue May 19 11:10:55 2026] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=cri-containerd-2f4d46400cc2f7025129d3749a10e862999958af0e280d8a42758cbc03551fe4.scope,mems_allowed=0,global_oom,task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod666662ed_8a09_48b3_a6b2_06778acdce92.slice/cri-containerd-7144db27fe0761156a6b37c7dbc0e16621205089c3bf5426727437543fbba9f5.scope,task=coredns,pid=351828,uid=65532
+[Tue May 19 11:10:55 2026] Out of memory: Killed process 351828 (coredns) total-vm:774468kB, anon-rss:9380kB, file-rss:7168kB, shmem-rss:0kB, UID:65532 pgtables:256kB oom_score_adj:999
+[Tue May 19 11:10:55 2026] Tasks in /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod666662ed_8a09_48b3_a6b2_06778acdce92.slice/cri-containerd-7144db27fe0761156a6b37c7dbc0e16621205089c3bf5426727437543fbba9f5.scope are going to be killed due to memory.oom.group set
+[Tue May 19 11:10:55 2026] Out of memory: Killed process 351828 (coredns) total-vm:774468kB, anon-rss:9380kB, file-rss:7168kB, shmem-rss:0kB, UID:65532 pgtables:256kB oom_score_adj:999
+[Tue May 19 11:10:55 2026] kube-apiserver invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=-997
+[Tue May 19 11:10:55 2026]  oom_kill_process+0xff/0x1c0
+[Tue May 19 11:10:55 2026] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[Tue May 19 11:10:55 2026] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=cri-containerd-97f81f01bfff4c2dabb613e105f560838fdba95d64031c4987f8adc1066bbaff.scope,mems_allowed=0,global_oom,task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod39ab85d4_b252_4bb9_ac29_9e2d3678d00f.slice/cri-containerd-b90290e8d3e83533377896e19c60f6e4936744673bd7192eff7a1a0ee5ef9c5a.scope,task=coredns,pid=351830,uid=65532
+[Tue May 19 11:10:55 2026] Out of memory: Killed process 351830 (coredns) total-vm:773188kB, anon-rss:9728kB, file-rss:5632kB, shmem-rss:0kB, UID:65532 pgtables:260kB oom_score_adj:999
+[Tue May 19 11:10:55 2026] Tasks in /kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod39ab85d4_b252_4bb9_ac29_9e2d3678d00f.slice/cri-containerd-b90290e8d3e83533377896e19c60f6e4936744673bd7192eff7a1a0ee5ef9c5a.scope are going to be killed due to memory.oom.group set
+[Tue May 19 11:10:55 2026] Out of memory: Killed process 351830 (coredns) total-vm:773188kB, anon-rss:9728kB, file-rss:5632kB, shmem-rss:0kB, UID:65532 pgtables:260kB oom_score_adj:999
+[Tue May 19 11:10:56 2026] kube-apiserver invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=-997
+[Tue May 19 11:10:56 2026]  oom_kill_process+0xff/0x1c0
+[Tue May 19 11:10:56 2026] [  pid  ]   uid  tgid total_vm      rss pgtables_bytes swapents oom_score_adj name
+[Tue May 19 11:10:56 2026] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=cri-containerd-97f81f01bfff4c2dabb613e105f560838fdba95d64031c4987f8adc1066bbaff.scope,mems_allowed=0,global_oom,task_memcg=/system.slice/docker-7439bfe73114321318e8ef3b451756bb38b2221894fce287da18d1563fa2c5a5.scope,task=uvicorn,pid=6644,uid=0
+[Tue May 19 11:10:56 2026] Out of memory: Killed process 6644 (uvicorn) total-vm:2067655568kB, anon-rss:158155052kB, file-rss:3716kB, shmem-rss:0kB, UID:0 pgtables:358612kB oom_score_adj:0
+[Tue May 19 11:11:00 2026] oom_reaper: reaped process 6644 (uvicorn), now anon-rss:0kB, file-rss:3716kB, shmem-rss:0kB

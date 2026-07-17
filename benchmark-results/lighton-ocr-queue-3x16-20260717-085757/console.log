@@ -1,0 +1,131 @@
+[2026-07-17T08:57:57-04:00] LightOnOCR queued benchmark: 3 containers x 16 logical CPUs
+[2026-07-17T08:57:57-04:00] Queued 15 independent request(s) for the single input file
+[2026-07-17T08:57:57-04:00] Each completed worker immediately claims the next queued request
+[2026-07-17T08:57:57-04:00] Result directory: /root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757
+[2026-07-17T08:57:57-04:00] Preparing request payloads before timed execution
+[2026-07-17T08:57:57-04:00] PREPARE job=0001 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:57-04:00] PREPARE job=0002 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:57-04:00] PREPARE job=0003 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:58-04:00] PREPARE job=0004 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:58-04:00] PREPARE job=0005 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:59-04:00] PREPARE job=0006 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:59-04:00] PREPARE job=0007 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:57:59-04:00] PREPARE job=0008 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:00-04:00] PREPARE job=0009 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:00-04:00] PREPARE job=0010 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:01-04:00] PREPARE job=0011 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:01-04:00] PREPARE job=0012 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:01-04:00] PREPARE job=0013 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:02-04:00] PREPARE job=0014 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:02-04:00] PREPARE job=0015 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+[2026-07-17T08:58:03-04:00] Prepared 15 queued job(s)
+[2026-07-17T08:58:03-04:00] START worker=1 container=lighton-ocr-vllm-cpu-queue-1 port=8011 cpuset=0-15
+[2026-07-17T08:58:03-04:00] START worker=2 container=lighton-ocr-vllm-cpu-queue-2 port=8012 cpuset=16-31
+[2026-07-17T08:58:04-04:00] START worker=3 container=lighton-ocr-vllm-cpu-queue-3 port=8013 cpuset=32-47
+[2026-07-17T08:58:04-04:00] HEALTH_WAIT worker=1 container=lighton-ocr-vllm-cpu-queue-1 url=http://localhost:8011/health
+[2026-07-17T09:01:45-04:00] HEALTH_OK worker=1 container=lighton-ocr-vllm-cpu-queue-1
+[2026-07-17T09:01:45-04:00] HEALTH_WAIT worker=2 container=lighton-ocr-vllm-cpu-queue-2 url=http://localhost:8012/health
+[2026-07-17T09:01:45-04:00] HEALTH_OK worker=2 container=lighton-ocr-vllm-cpu-queue-2
+[2026-07-17T09:01:45-04:00] HEALTH_WAIT worker=3 container=lighton-ocr-vllm-cpu-queue-3 url=http://localhost:8013/health
+[2026-07-17T09:01:45-04:00] HEALTH_OK worker=3 container=lighton-ocr-vllm-cpu-queue-3
+[2026-07-17T09:01:45-04:00] Starting one concurrent warm-up request per container
+[2026-07-17T09:01:45-04:00] WARMUP_START worker=2 port=8012
+[2026-07-17T09:01:45-04:00] WARMUP_START worker=3 port=8013
+[2026-07-17T09:01:45-04:00] WARMUP_START worker=1 port=8011
+[2026-07-17T09:06:02-04:00] WARMUP_DONE worker=3 http=200 curl_exit=0 latency_sec=257.044599
+[2026-07-17T09:06:48-04:00] WARMUP_DONE worker=2 http=200 curl_exit=0 latency_sec=303.303283
+[2026-07-17T09:06:49-04:00] WARMUP_DONE worker=1 http=200 curl_exit=0 latency_sec=304.249436
+[2026-07-17T09:06:49-04:00] All warm-up requests completed
+[2026-07-17T09:06:49-04:00] QUEUE_START queued_jobs=15 active_workers=3
+[2026-07-17T09:06:49-04:00] WORKER_READY worker=1 container=lighton-ocr-vllm-cpu-queue-1 cpuset=0-15
+[2026-07-17T09:06:49-04:00] WORKER_READY worker=2 container=lighton-ocr-vllm-cpu-queue-2 cpuset=16-31
+[2026-07-17T09:06:49-04:00] WORKER_READY worker=3 container=lighton-ocr-vllm-cpu-queue-3 cpuset=32-47
+[2026-07-17T09:06:49-04:00] JOB_CLAIM worker=1 job=0001 worker_job_number=1
+[2026-07-17T09:06:49-04:00] JOB_CLAIM worker=2 job=0002 worker_job_number=1
+[2026-07-17T09:06:49-04:00] JOB_START worker=2 container=lighton-ocr-vllm-cpu-queue-2 job=0002 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8012
+[2026-07-17T09:06:49-04:00] JOB_START worker=1 container=lighton-ocr-vllm-cpu-queue-1 job=0001 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8011
+[2026-07-17T09:06:49-04:00] JOB_CLAIM worker=3 job=0003 worker_job_number=1
+[2026-07-17T09:06:49-04:00] JOB_START worker=3 container=lighton-ocr-vllm-cpu-queue-3 job=0003 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8013
+[2026-07-17T09:10:56-04:00] JOB_DONE worker=3 job=0003 http=200 curl_exit=0 latency_sec=246.609523; claiming next job
+[2026-07-17T09:10:56-04:00] JOB_CLAIM worker=3 job=0004 worker_job_number=2
+[2026-07-17T09:10:56-04:00] JOB_START worker=3 container=lighton-ocr-vllm-cpu-queue-3 job=0004 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8013
+[2026-07-17T09:11:43-04:00] JOB_DONE worker=2 job=0002 http=200 curl_exit=0 latency_sec=293.628016; claiming next job
+[2026-07-17T09:11:43-04:00] JOB_CLAIM worker=2 job=0005 worker_job_number=2
+[2026-07-17T09:11:43-04:00] JOB_START worker=2 container=lighton-ocr-vllm-cpu-queue-2 job=0005 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8012
+[2026-07-17T09:11:47-04:00] JOB_DONE worker=1 job=0001 http=200 curl_exit=0 latency_sec=297.780276; claiming next job
+[2026-07-17T09:11:47-04:00] JOB_CLAIM worker=1 job=0006 worker_job_number=2
+[2026-07-17T09:11:47-04:00] JOB_START worker=1 container=lighton-ocr-vllm-cpu-queue-1 job=0006 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8011
+[2026-07-17T09:14:58-04:00] JOB_DONE worker=3 job=0004 http=200 curl_exit=0 latency_sec=242.751868; claiming next job
+[2026-07-17T09:14:58-04:00] JOB_CLAIM worker=3 job=0007 worker_job_number=3
+[2026-07-17T09:14:58-04:00] JOB_START worker=3 container=lighton-ocr-vllm-cpu-queue-3 job=0007 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8013
+[2026-07-17T09:16:39-04:00] JOB_DONE worker=2 job=0005 http=200 curl_exit=0 latency_sec=296.740010; claiming next job
+[2026-07-17T09:16:39-04:00] JOB_CLAIM worker=2 job=0008 worker_job_number=3
+[2026-07-17T09:16:39-04:00] JOB_START worker=2 container=lighton-ocr-vllm-cpu-queue-2 job=0008 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8012
+[2026-07-17T09:16:45-04:00] JOB_DONE worker=1 job=0006 http=200 curl_exit=0 latency_sec=297.690429; claiming next job
+[2026-07-17T09:16:45-04:00] JOB_CLAIM worker=1 job=0009 worker_job_number=3
+[2026-07-17T09:16:45-04:00] JOB_START worker=1 container=lighton-ocr-vllm-cpu-queue-1 job=0009 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8011
+[2026-07-17T09:18:59-04:00] JOB_DONE worker=3 job=0007 http=200 curl_exit=0 latency_sec=240.909414; claiming next job
+[2026-07-17T09:18:59-04:00] JOB_CLAIM worker=3 job=0010 worker_job_number=4
+[2026-07-17T09:18:59-04:00] JOB_START worker=3 container=lighton-ocr-vllm-cpu-queue-3 job=0010 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8013
+[2026-07-17T09:21:34-04:00] JOB_DONE worker=2 job=0008 http=200 curl_exit=0 latency_sec=294.061781; claiming next job
+[2026-07-17T09:21:34-04:00] JOB_CLAIM worker=2 job=0011 worker_job_number=4
+[2026-07-17T09:21:34-04:00] JOB_START worker=2 container=lighton-ocr-vllm-cpu-queue-2 job=0011 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8012
+[2026-07-17T09:21:37-04:00] JOB_DONE worker=1 job=0009 http=200 curl_exit=0 latency_sec=292.480710; claiming next job
+[2026-07-17T09:21:37-04:00] JOB_CLAIM worker=1 job=0012 worker_job_number=4
+[2026-07-17T09:21:37-04:00] JOB_START worker=1 container=lighton-ocr-vllm-cpu-queue-1 job=0012 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8011
+[2026-07-17T09:23:00-04:00] JOB_DONE worker=3 job=0010 http=200 curl_exit=0 latency_sec=240.360541; claiming next job
+[2026-07-17T09:23:00-04:00] JOB_CLAIM worker=3 job=0013 worker_job_number=5
+[2026-07-17T09:23:00-04:00] JOB_START worker=3 container=lighton-ocr-vllm-cpu-queue-3 job=0013 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8013
+[2026-07-17T09:26:22-04:00] JOB_DONE worker=2 job=0011 http=200 curl_exit=0 latency_sec=288.186612; claiming next job
+[2026-07-17T09:26:22-04:00] JOB_CLAIM worker=2 job=0014 worker_job_number=5
+[2026-07-17T09:26:22-04:00] JOB_START worker=2 container=lighton-ocr-vllm-cpu-queue-2 job=0014 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8012
+[2026-07-17T09:26:27-04:00] JOB_DONE worker=1 job=0012 http=200 curl_exit=0 latency_sec=289.502712; claiming next job
+[2026-07-17T09:26:27-04:00] JOB_CLAIM worker=1 job=0015 worker_job_number=5
+[2026-07-17T09:26:27-04:00] JOB_START worker=1 container=lighton-ocr-vllm-cpu-queue-1 job=0015 file=/root/Documents/sebiDeployment/vespa/app/sample.pdf port=8011
+[2026-07-17T09:27:06-04:00] JOB_DONE worker=3 job=0013 http=200 curl_exit=0 latency_sec=245.989193; claiming next job
+[2026-07-17T09:27:06-04:00] WORKER_DRAINED worker=3 completed_jobs=5; queue empty
+[2026-07-17T09:30:45-04:00] JOB_DONE worker=1 job=0015 http=200 curl_exit=0 latency_sec=258.423151; claiming next job
+[2026-07-17T09:30:45-04:00] WORKER_DRAINED worker=1 completed_jobs=5; queue empty
+[2026-07-17T09:30:48-04:00] JOB_DONE worker=2 job=0014 http=200 curl_exit=0 latency_sec=265.980402; claiming next job
+[2026-07-17T09:30:48-04:00] WORKER_DRAINED worker=2 completed_jobs=5; queue empty
+[2026-07-17T09:30:48-04:00] QUEUE_DRAINED wall_sec=1439
+LightOnOCR dynamic-queue benchmark summary
+
+queued_files=15
+successful_files=15
+failed_files=0
+queue_wall_sec=1439
+throughput_pages_per_min=0.625
+latency_avg_sec=272.740
+latency_p50_sec=288.187
+latency_p95_sec=297.717
+latency_max_sec=297.780
+
+worker=1
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=287.175
+  busy_time_sec=1435.877
+
+worker=2
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=287.719
+  busy_time_sec=1438.597
+
+worker=3
+  assigned_files=5
+  successful_files=5
+  latency_avg_sec=243.324
+  busy_time_sec=1216.621
+
+host_mem_available_min_gib=48.03
+host_load1_max=51.95
+new_oom_lines=0
+[2026-07-17T09:30:48-04:00] Artifacts:
+[2026-07-17T09:30:48-04:00]   summary=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/summary.txt
+[2026-07-17T09:30:48-04:00]   requests=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/requests.csv
+[2026-07-17T09:30:48-04:00]   responses=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/responses/
+[2026-07-17T09:30:48-04:00]   host_metrics=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/host_metrics.csv
+[2026-07-17T09:30:48-04:00]   docker_metrics=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/docker_stats.jsonl
+[2026-07-17T09:30:48-04:00]   console=/root/Documents/sebiDeployment/benchmark-results/lighton-ocr-queue-3x16-20260717-085757/console.log

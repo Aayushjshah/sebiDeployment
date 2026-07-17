@@ -1,0 +1,14 @@
+run_id=20260717-085757
+started_at=2026-07-17T08:57:57-04:00
+input_root=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+page_index=0
+image=lighton-ocr-vllm-cpu:sebi-20260714
+model=lightonai/LightOnOCR-2-1B-bbox
+instance_count=3
+cores_per_instance=16
+cpu_sets=0-15,16-31,32-47
+queued_jobs=15
+single_file_requests=15
+max_tokens=4096
+warmup=true
+finished_at=2026-07-17T09:30:48-04:00

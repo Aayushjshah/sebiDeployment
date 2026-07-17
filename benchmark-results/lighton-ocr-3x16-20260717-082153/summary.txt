@@ -1,0 +1,32 @@
+LightOnOCR multi-instance benchmark summary
+
+instance_count=3
+  measured_requests=15
+  successful_requests=13
+  failed_requests=2
+  measured_wall_sec=1494
+  throughput_pages_per_min=0.522
+  latency_avg_sec=279.692
+  latency_p50_sec=293.532
+  latency_p95_sec=299.383
+  latency_max_sec=300.228
+
+host_mem_available_start=49.23 GiB
+host_mem_available_min=48.05 GiB
+host_mem_available_end=111.65 GiB
+host_load1_max=53.27
+
+container=n3/lighton-ocr-vllm-cpu-exp-1
+  cpu_max_pct=1605.02
+  mem_max_pct=9.29
+  mem_max=23.32 GiB
+container=n3/lighton-ocr-vllm-cpu-exp-2
+  cpu_max_pct=1607.90
+  mem_max_pct=9.27
+  mem_max=23.29 GiB
+container=n3/lighton-ocr-vllm-cpu-exp-3
+  cpu_max_pct=1599.72
+  mem_max_pct=8.80
+  mem_max=22.09 GiB
+
+new_oom_lines=0
