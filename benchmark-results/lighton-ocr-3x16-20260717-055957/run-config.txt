@@ -1,0 +1,12 @@
+run_id=20260717-055957
+started_at=2026-07-17T05:59:57-04:00
+input_path=/root/Documents/sebiDeployment/vespa/app/sample.pdf
+page_index=0
+image=lighton-ocr-vllm-cpu:sebi-20260714
+instance_count=3
+cores_per_instance=16
+cpu_sets=0-15,16-31,32-47
+warmup_rounds=1
+measured_rounds=5
+measured_requests=15
+finished_at=2026-07-17T06:32:33-04:00
