@@ -583,17 +583,7 @@ start_services() {
   ${dc} "${COMPOSE_FILES[@]}" --profile keycloak run --rm --no-deps --pull never app bun run migrate
 
   log "Bootstrapping Keycloak realm and admin user..."
-  if [ "${KEYCLOAK_BOOTSTRAP_LDAP_GUARD:-false}" = "true" ]; then
-    (
-      "${SCRIPT_DIR}/scripts/keycloak-bootstrap-ldap-guard.sh" disable
-      trap '"${SCRIPT_DIR}/scripts/keycloak-bootstrap-ldap-guard.sh" restore || true' EXIT
-      ${dc} "${COMPOSE_FILES[@]}" --profile keycloak run --rm --no-deps --pull never app bun run keycloak:bootstrap
-      "${SCRIPT_DIR}/scripts/keycloak-bootstrap-ldap-guard.sh" restore
-      trap - EXIT
-    )
-  else
-    ${dc} "${COMPOSE_FILES[@]}" --profile keycloak run --rm --no-deps --pull never app bun run keycloak:bootstrap
-  fi
+  ${dc} "${COMPOSE_FILES[@]}" --profile keycloak run --rm --no-deps --pull never app bun run keycloak:bootstrap
 
   log "Starting application services..."
   ${dc} "${COMPOSE_FILES[@]}" --profile keycloak up -d --pull never
