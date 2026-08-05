@@ -55,6 +55,8 @@ set_env_value "KEYCLOAK_LDAP_UPN_CLAIM" "ldap_upn"
 set_env_value "KEYCLOAK_LDAP_OBJECT_GUID_CLAIM" "ldap_object_guid"
 set_env_value "KEYCLOAK_LDAP_ALLOWED_MAIL_DOMAIN" "sebi.gov.in"
 set_env_value "KEYCLOAK_REQUIRE_LDAP_OBJECT_GUID" "true"
+set_env_value "KEYCLOAK_REQUIRE_LOCAL_EMAIL_VERIFIED" "false"
+set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/signin"
 set_env_value "REDIS_URL" "redis://redis:6379/0"
 set_env_value "NO_PROXY" "localhost,127.0.0.1,${PUBLIC_HOST},xyne-db,redis,xyne-redis,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local"
 set_env_value "no_proxy" "localhost,127.0.0.1,${PUBLIC_HOST},xyne-db,redis,xyne-redis,vespa,keycloak,xyne-keycloak,xyne-app,app,xyne-app-sync,app-sync,xyne-nginx,nginx,livekit,loki,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.local"
@@ -73,7 +75,8 @@ printf '[ldap-start] Starting the standard Nginx/Compose deployment at %s\n' "${
 runtime_start="$(mktemp "${SCRIPT_DIR}/.start-keycloak-ldap-runtime.XXXXXX.sh")"
 trap 'rm -f "${runtime_start}"' EXIT
 sed \
-  's|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca-keycloak-ldap"|' \
+  -e 's|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca-keycloak-ldap"|' \
+  -e 's|set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/auth"|set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/signin"|' \
   start.sh > "${runtime_start}"
 chmod +x "${runtime_start}"
 
