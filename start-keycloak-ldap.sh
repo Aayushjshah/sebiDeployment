@@ -82,4 +82,5 @@ chmod +x "${runtime_start}"
 
 XYNE_PUBLIC_URL="${PUBLIC_URL}" \
 XYNE_SKIP_IMAGE_LOAD=true \
+KEYCLOAK_BOOTSTRAP_LDAP_GUARD=true \
 "${runtime_start}"
