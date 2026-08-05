@@ -70,7 +70,13 @@ done
 docker tag "${SOURCE_IMAGE}" xynehq/xyne:latest
 
 printf '[ldap-start] Starting the standard Nginx/Compose deployment at %s\n' "${PUBLIC_URL}"
+runtime_start="$(mktemp "${SCRIPT_DIR}/.start-keycloak-ldap-runtime.XXXXXX.sh")"
+trap 'rm -f "${runtime_start}"' EXIT
+sed \
+  's|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca-keycloak-ldap"|' \
+  start.sh > "${runtime_start}"
+chmod +x "${runtime_start}"
+
 XYNE_PUBLIC_URL="${PUBLIC_URL}" \
 XYNE_SKIP_IMAGE_LOAD=true \
-./start.sh
-
+"${runtime_start}"
