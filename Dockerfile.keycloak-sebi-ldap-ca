@@ -1,0 +1,14 @@
+ARG KEYCLOAK_BASE_IMAGE=quay.io/keycloak/keycloak:26.0
+FROM ${KEYCLOAK_BASE_IMAGE}
+
+USER root
+
+RUN mkdir -p /opt/keycloak/conf/truststores
+
+COPY certs/sebi-ldap-ca-bundle.pem /opt/keycloak/conf/truststores/sebi-ldap-ca-bundle.pem
+
+RUN chmod 0644 /opt/keycloak/conf/truststores/sebi-ldap-ca-bundle.pem
+
+USER 1000
+
+ENV KC_TRUSTSTORE_PATHS=/opt/keycloak/conf/truststores/sebi-ldap-ca-bundle.pem

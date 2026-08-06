@@ -9,6 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
 SOURCE_IMAGE="${XYNE_LDAP_IMAGE:-xyne-search:keycloak-ldap-mail-login-20260804}"
+KEYCLOAK_BASE_IMAGE="${KEYCLOAK_BASE_IMAGE:-quay.io/keycloak/keycloak:26.0}"
+KEYCLOAK_LDAP_IMAGE="${KEYCLOAK_LDAP_IMAGE:-sebi-keycloak:26.0-ldap-ca}"
+KEYCLOAK_LDAP_DOCKERFILE="Dockerfile.keycloak-sebi-ldap-ca"
+KEYCLOAK_LDAP_CA_BUNDLE="certs/sebi-ldap-ca-bundle.pem"
 PUBLIC_URL="${XYNE_PUBLIC_URL:-http://10.102.44.2:3000}"
 PUBLIC_HOST="${PUBLIC_URL#*://}"
 PUBLIC_HOST="${PUBLIC_HOST%%[:/]*}"
@@ -44,7 +48,23 @@ command -v docker >/dev/null 2>&1 || die "docker is required"
 docker info >/dev/null 2>&1 || die "Docker daemon is not running"
 [ -f start.sh ] || die "Run this script from the sebiDeployment repository"
 [ -f .env ] || die "Expected the existing deployment environment at ${SCRIPT_DIR}/.env"
+[ -f "${KEYCLOAK_LDAP_DOCKERFILE}" ] || die "Expected ${KEYCLOAK_LDAP_DOCKERFILE} under ${SCRIPT_DIR}"
+[ -s "${KEYCLOAK_LDAP_CA_BUNDLE}" ] || die "Expected a non-empty LDAP CA bundle at ${SCRIPT_DIR}/${KEYCLOAK_LDAP_CA_BUNDLE}"
 docker image inspect "${SOURCE_IMAGE}" >/dev/null 2>&1 || die "Docker image ${SOURCE_IMAGE} is not loaded"
+docker image inspect "${KEYCLOAK_BASE_IMAGE}" >/dev/null 2>&1 || die "Docker image ${KEYCLOAK_BASE_IMAGE} is not loaded"
+
+certificate_starts="$(grep -c -- '-----BEGIN CERTIFICATE-----' "${KEYCLOAK_LDAP_CA_BUNDLE}" || true)"
+certificate_ends="$(grep -c -- '-----END CERTIFICATE-----' "${KEYCLOAK_LDAP_CA_BUNDLE}" || true)"
+if [ "${certificate_starts}" -lt 1 ] || [ "${certificate_starts}" -ne "${certificate_ends}" ]; then
+  die "LDAP CA bundle must contain matching BEGIN/END CERTIFICATE blocks"
+fi
+
+printf '[ldap-start] Building Keycloak trust image with %s LDAP certificate(s)\n' "${certificate_starts}"
+docker build --pull=false --network=none \
+  --build-arg "KEYCLOAK_BASE_IMAGE=${KEYCLOAK_BASE_IMAGE}" \
+  -f "${KEYCLOAK_LDAP_DOCKERFILE}" \
+  -t "${KEYCLOAK_LDAP_IMAGE}" \
+  .
 
 printf '[ldap-start] Updating LDAP/Keycloak deployment variables in %s/.env\n' "${SCRIPT_DIR}"
 set_env_value "XYNE_PUBLIC_URL" "${PUBLIC_URL}"
@@ -77,6 +97,7 @@ trap 'rm -f "${runtime_start}"' EXIT
 sed \
   -e 's|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca"|XYNE_SEBI_CA_DOCKERFILE="Dockerfile.xyne-sebi-ca-keycloak-ldap"|' \
   -e 's|set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/auth"|set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/signin"|' \
+  -e "s|set_env_value \"KEYCLOAK_IMAGE\" \"quay.io/keycloak/keycloak:26.0\"|set_env_value \"KEYCLOAK_IMAGE\" \"${KEYCLOAK_LDAP_IMAGE}\"|" \
   start.sh > "${runtime_start}"
 chmod +x "${runtime_start}"
 
