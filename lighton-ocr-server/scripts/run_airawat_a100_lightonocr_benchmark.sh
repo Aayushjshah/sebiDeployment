@@ -25,4 +25,5 @@ PYTHONPATH=src "${PYTHON_BIN}" scripts/benchmark_lightonocr.py \
   --input "${INPUT_DIR}" \
   --url "https://apis.airawat.cdac.in/msebisec-lightonocr/v1/chat/completions" \
   --model "lightonai/LightOnOCR-2-1B" \
-  --concurrency "${CONCURRENCY}"
+  --concurrency "${CONCURRENCY}" \
+  --fail-fast
