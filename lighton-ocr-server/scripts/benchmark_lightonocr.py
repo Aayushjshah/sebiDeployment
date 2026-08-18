@@ -14,10 +14,13 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from PIL import Image
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -47,6 +50,10 @@ OOM_MARKERS = (
     "cuda out of memory",
     "memory allocation",
 )
+
+
+class BenchmarkFailedError(RuntimeError):
+    """Raised when fail-fast mode stops the benchmark after a request failure."""
 
 
 @dataclass(frozen=True)
@@ -328,15 +335,18 @@ async def run_warmup(
     settings: Settings,
     warmup_requests: int,
     prompt: str,
-) -> None:
+) -> list[RequestResult]:
     if warmup_requests <= 0:
-        return
+        return []
     client = build_client(settings, min(warmup_requests, max(1, settings.lighton_concurrency)))
+    results: list[RequestResult] = []
     try:
         for index in range(warmup_requests):
-            await send_ocr_request(client, pages[index % len(pages)], prompt)
+            result = await send_ocr_request(client, pages[index % len(pages)], prompt)
+            results.append(result)
     finally:
         await client.close()
+    return results
 
 
 async def nvidia_smi_sample() -> list[GpuSample]:
@@ -479,6 +489,23 @@ def summarize_failures(results: list[RequestResult]) -> dict[str, int]:
         else:
             summary["other_exceptions"] += 1
     return summary
+
+
+def first_failure(results: Iterable[RequestResult]) -> RequestResult | None:
+    return next((result for result in results if not result.ok), None)
+
+
+def print_failure_details(result: RequestResult, *, label: str) -> None:
+    print(f"\n{label} failed.")
+    print(f"failure_type: {result.failure_type or 'unknown'}")
+    if result.status_code is not None:
+        print(f"status_code: {result.status_code}")
+    print(f"source: {result.source_name}")
+    print(f"page_number: {result.page_number}")
+    print(f"page_id: {result.page_id}")
+    if result.error:
+        print("error:")
+        print(result.error[:2000])
 
 
 def summarize_gpu(
@@ -676,6 +703,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--prompt",
         default=_env("LIGHTON_OCR_BENCHMARK_PROMPT") or Settings().lighton_prompt,
     )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        default=_env("LIGHTON_OCR_BENCHMARK_FAIL_FAST").lower() in {"1", "true", "yes"},
+        help="Stop after the first failed warm-up or benchmark run and print the first error.",
+    )
     return parser
 
 
@@ -708,14 +741,20 @@ async def async_main(args: argparse.Namespace) -> int:
             raise ValueError("dataset rendered zero pages")
 
         print(f"Running {args.warmup} warm-up request(s) ...")
-        await run_warmup(
+        warmup_results = await run_warmup(
             pages,
             settings=settings,
             warmup_requests=args.warmup,
             prompt=args.prompt,
         )
+        warmup_failure = first_failure(warmup_results)
+        if warmup_failure is not None:
+            print_failure_details(warmup_failure, label="Warm-up request")
+            if args.fail_fast:
+                raise BenchmarkFailedError("warm-up failed; stopping before measured runs")
 
         runs: list[dict[str, Any]] = []
+        aborted_reason: str | None = None
         for concurrency in concurrency_levels:
             print(f"\nRunning concurrency={concurrency} over {len(pages)} pages ...")
             run = await run_concurrency_level(
@@ -731,6 +770,18 @@ async def async_main(args: argparse.Namespace) -> int:
                 f"done: success={run['successful_requests']} failed={run['failed_requests']} "
                 f"pages/sec={run['pages_per_second']:.3f} p95={run['p95_latency_seconds']:.2f}s"
             )
+            if run["failed_requests"] > 0:
+                failure = first_failure(
+                    RequestResult(**detail) for detail in run.get("failure_details", [])
+                )
+                if failure is not None:
+                    print_failure_details(failure, label=f"Concurrency {concurrency}")
+                if args.fail_fast:
+                    aborted_reason = (
+                        f"concurrency {concurrency} had {run['failed_requests']} failed "
+                        "request(s); stopping because --fail-fast is enabled"
+                    )
+                    break
 
     conclusion = best_observed_concurrency(runs)
     payload = {
@@ -748,14 +799,20 @@ async def async_main(args: argparse.Namespace) -> int:
             "max_output_tokens": settings.lighton_max_output_tokens,
             "temperature": settings.lighton_temperature,
             "gpu_sampling_enabled": not args.no_gpu,
+            "fail_fast": args.fail_fast,
         },
         "runs": runs,
         "conclusion": conclusion,
     }
+    if aborted_reason:
+        payload["aborted_reason"] = aborted_reason
     result_path = output_dir / f"lightonocr-concurrency-{timestamp}.json"
     result_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print_summary(runs, conclusion)
     print(f"\nJSON results saved to {result_path}")
+    if aborted_reason:
+        print(f"\nStopped early: {aborted_reason}")
+        return 2
     return 0
 
 
@@ -767,6 +824,9 @@ def main() -> int:
     except KeyboardInterrupt:
         print("benchmark interrupted", file=sys.stderr)
         return 130
+    except BenchmarkFailedError as exc:
+        print(f"benchmark failed: {exc}", file=sys.stderr)
+        return 2
     except Exception as exc:
         print(f"benchmark failed: {exc}", file=sys.stderr)
         return 1
