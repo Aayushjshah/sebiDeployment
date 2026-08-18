@@ -21,6 +21,8 @@ CONCURRENCY="${2:-${LIGHTON_OCR_BENCHMARK_CONCURRENCY:-1,2,4,8,12,16}}"
 
 cd "${ROOT_DIR}"
 
+export LIGHTON_OCR_BENCHMARK_MAX_OUTPUT_TOKENS="${LIGHTON_OCR_BENCHMARK_MAX_OUTPUT_TOKENS:-2048}"
+
 PYTHONPATH=src "${PYTHON_BIN}" scripts/benchmark_lightonocr.py \
   --input "${INPUT_DIR}" \
   --url "https://apis.airawat.cdac.in/msebisec-lightonocr/v1/chat/completions" \
