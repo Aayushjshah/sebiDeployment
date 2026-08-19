@@ -1,0 +1,146 @@
+html,
+body,
+.login-pf,
+.login-pf body,
+.login-pf-page,
+#kc-container,
+#kc-container-wrapper {
+  min-height: 100%;
+  background: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)),
+    url("../img/sebi-bg.png") no-repeat center center / cover fixed !important;
+}
+
+@media (min-width: 768px) {
+  .login-pf,
+  .login-pf body,
+  .login-pf-page,
+  #kc-container,
+  #kc-container-wrapper {
+    background: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)),
+      url("../img/sebi-bg.png") no-repeat center center / cover fixed !important;
+  }
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-pf-page .card-pf,
+#kc-content,
+#kc-content-wrapper,
+#kc-form-wrapper {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.sebi-card {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 32px 36px;
+  border: 1px solid rgba(212, 220, 228, 0.6);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 30px rgba(9, 40, 90, 0.15);
+}
+
+.sebi-logo-wrap {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.sebi-logo {
+  max-height: 64px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.sebi-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #0b2e59;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.2px;
+}
+
+.sebi-subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: #5c6b7a;
+  margin: 0 0 24px 0;
+}
+
+.sebi-field {
+  margin-bottom: 18px;
+}
+
+.sebi-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b2e59;
+  margin-bottom: 6px;
+}
+
+.sebi-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  font-size: 14px;
+  color: #1a2838;
+  background: #f8fafc;
+  border: 1px solid #c6d0dc;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sebi-input:focus {
+  border-color: #2a6bb0;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(42, 107, 176, 0.15);
+}
+
+.sebi-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  gap: 12px;
+}
+
+.sebi-actions a {
+  font-size: 13px;
+  color: #2a6bb0;
+  text-decoration: none;
+}
+
+.sebi-actions a:hover {
+  text-decoration: underline;
+}
+
+.sebi-button {
+  padding: 11px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #0b2e59;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin: 0;
+  width: auto;
+}
+
+.sebi-button:hover {
+  background: #2a6bb0;
+}

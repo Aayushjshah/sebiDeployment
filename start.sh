@@ -64,6 +64,7 @@ check_bundle_layout() {
   [ -d "${BUNDLE_DIR}/images" ] || warn "No images directory found at ${BUNDLE_DIR}/images; will rely on already-loaded Docker images"
   [ -d "${BUNDLE_DIR}/grafana/provisioning" ] || die "Expected Grafana provisioning files under ${BUNDLE_DIR}/grafana/provisioning"
   [ -f "${SCRIPT_DIR}/tei-batch-proxy.js" ] || die "Expected TEI batch proxy script at ${SCRIPT_DIR}/tei-batch-proxy.js"
+  [ -f "${SCRIPT_DIR}/keycloak-themes/sebi/login/theme.properties" ] || die "Expected the SEBI Keycloak theme under ${SCRIPT_DIR}/keycloak-themes/sebi/login"
   mkdir -p "${SCRIPT_DIR}/pem"
 }
 
@@ -211,6 +212,7 @@ configure_env() {
   set_env_value "KEYCLOAK_INTERNAL_BASE_URL" "http://keycloak:8080/keycloak"
   set_env_value "KEYCLOAK_REALM" "xyne-shared"
   set_env_value "KEYCLOAK_CLIENT_ID" "xyne-web"
+  set_env_value "KEYCLOAK_LOGIN_THEME" "${KEYCLOAK_LOGIN_THEME:-sebi}"
   set_env_value "KEYCLOAK_WORKSPACE_EXTERNAL_ID" "xyne-shared-workspace"
   set_env_value "KEYCLOAK_LOGOUT_REDIRECT_URL" "/auth"
   set_env_value "KC_DB_USERNAME" "xyne"
